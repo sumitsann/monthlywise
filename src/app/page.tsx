@@ -14,7 +14,7 @@ const tools = [
     title: "Auto Loan Calculator",
     description: "Calculate car payments, interest, taxes, and fees.",
     href: "/calculators/auto-loan",
-    available: false,
+    available: true,
   },
   {
     icon: "💳",
@@ -28,7 +28,7 @@ const tools = [
     title: "Personal Loan Calculator",
     description: "Estimate loan payments and total interest.",
     href: "/calculators/personal-loan",
-    available: false,
+    available: true,
   },
   {
     icon: "📊",
