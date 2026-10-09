@@ -6,14 +6,41 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-const headers = {
+type Member = {
+  id: string;
+};
+
+type ExpenseShare = {
+  memberId: string;
+  shareCents: number;
+};
+
+const noStoreHeaders = {
   "Cache-Control": "no-store",
 };
 
+const MAX_AMOUNT_CENTS = 100000000000;
+
 function fail(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status, headers });
+  return NextResponse.json(
+    { error: message },
+    {
+      status,
+      headers: noStoreHeaders,
+    },
+  );
 }
 
+function isValidAmount(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value > 0 &&
+    value <= MAX_AMOUNT_CENTS
+  );
+}
+
+// Load saved expenses.
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
@@ -38,15 +65,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     if (error) {
       console.error("Expense lookup failed:", error.code);
+
       return fail("Unable to load expenses.", 500);
     }
 
-    return NextResponse.json({ expenses: data ?? [] }, { headers });
+    return NextResponse.json(
+      { expenses: data ?? [] },
+      { headers: noStoreHeaders },
+    );
   } catch {
     return fail("Unable to load expenses.", 500);
   }
 }
 
+// Save an expense with equal or custom shares.
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
@@ -91,12 +123,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return fail("Description must be 1 to 200 characters.", 400);
     }
 
-    if (
-      typeof amountCents !== "number" ||
-      !Number.isSafeInteger(amountCents) ||
-      amountCents <= 0 ||
-      amountCents > 100000000000
-    ) {
+    if (!isValidAmount(amountCents)) {
       return fail("Enter a valid expense amount.", 400);
     }
 
@@ -106,6 +133,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const supabase = getSupabaseAdmin();
 
+    // Load the current members from the database.
+    // Never trust member IDs supplied by the browser alone.
     const { data: members, error: membersError } = await supabase
       .from("expense_members")
       .select("id")
@@ -114,68 +143,134 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .order("id", { ascending: true });
 
     if (membersError) {
+      console.error("Member lookup failed:", membersError.code);
+
       return fail("Unable to load group members.", 500);
     }
 
-    if (!members || members.length === 0) {
+    const groupMembers = (members ?? []) as Member[];
+
+    if (groupMembers.length === 0) {
       return fail("Add group members before recording expenses.", 400);
     }
 
-    if (!members.some((member) => member.id === paidBy)) {
+    if (!groupMembers.some((member) => member.id === paidBy)) {
       return fail("The paying member must belong to this group.", 400);
     }
 
-    // Split in integer cents to avoid floating-point errors.
-    // Distribute any remaining cents deterministically.
-    const baseShare = Math.floor(amountCents / members.length);
+    const memberIds = new Set(groupMembers.map((member) => member.id));
 
-    const remainder = amountCents % members.length;
+    let shares: ExpenseShare[];
 
-    const { data: expense, error: expenseError } = await supabase
-      .from("group_expenses")
-      .insert({
-        group_id: id,
-        description,
-        amount_cents: amountCents,
-        paid_by: paidBy,
-      })
-      .select("id, description, amount_cents, paid_by, created_at")
-      .single();
+    // If custom shares are provided, validate them.
+    // Otherwise, use the existing equal-split behavior.
+    if (input.shares !== undefined) {
+      if (
+        !Array.isArray(input.shares) ||
+        input.shares.length === 0 ||
+        input.shares.length > 100
+      ) {
+        return fail("Select between 1 and 100 participants.", 400);
+      }
 
-    if (expenseError || !expense) {
-      console.error("Expense insert failed:", expenseError?.code);
+      const validatedShares: ExpenseShare[] = [];
+      const seenMembers = new Set<string>();
+
+      for (const item of input.shares) {
+        if (!item || typeof item !== "object" || Array.isArray(item)) {
+          return fail("Invalid custom split.", 400);
+        }
+
+        const share = item as Record<string, unknown>;
+
+        if (
+          typeof share.memberId !== "string" ||
+          !memberIds.has(share.memberId)
+        ) {
+          return fail("A selected member does not belong to this group.", 400);
+        }
+
+        if (seenMembers.has(share.memberId)) {
+          return fail("A member cannot appear twice in one split.", 400);
+        }
+
+        if (
+          typeof share.shareCents !== "number" ||
+          !Number.isSafeInteger(share.shareCents) ||
+          share.shareCents < 0 ||
+          share.shareCents > MAX_AMOUNT_CENTS
+        ) {
+          return fail("Each share must be a valid amount.", 400);
+        }
+
+        seenMembers.add(share.memberId);
+
+        validatedShares.push({
+          memberId: share.memberId,
+          shareCents: share.shareCents,
+        });
+      }
+
+      shares = validatedShares;
+    } else {
+      // Backward-compatible equal split.
+      // Your existing Add Expense form will keep working.
+      if (groupMembers.length > 100) {
+        return fail("Equal splits support up to 100 members.", 400);
+      }
+
+      const baseShare = Math.floor(amountCents / groupMembers.length);
+
+      const remainder = amountCents % groupMembers.length;
+
+      shares = groupMembers.map((member, index) => ({
+        memberId: member.id,
+        shareCents: baseShare + (index < remainder ? 1 : 0),
+      }));
+    }
+
+    const totalShares = shares.reduce(
+      (sum, share) => sum + share.shareCents,
+      0,
+    );
+
+    if (totalShares !== amountCents) {
+      return fail(
+        "All member shares must add up exactly to the expense total.",
+        400,
+      );
+    }
+
+    // This database function saves the expense and
+    // all shares together in a single transaction.
+    const { data: expenseId, error: rpcError } = await supabase.rpc(
+      "create_group_expense",
+      {
+        p_group_id: id,
+        p_description: description,
+        p_amount_cents: amountCents,
+        p_paid_by: paidBy,
+        p_shares: shares,
+      },
+    );
+
+    if (rpcError || !expenseId) {
+      console.error("Atomic expense creation failed:", rpcError?.code);
+
       return fail("Unable to save expense.", 500);
     }
 
-    const shares = members.map((member, index) => ({
-      group_id: id,
-      expense_id: expense.id,
-      member_id: member.id,
-      share_cents: baseShare + (index < remainder ? 1 : 0),
-    }));
-
-    const { error: sharesError } = await supabase
-      .from("expense_shares")
-      .insert(shares);
-
-    if (sharesError) {
-      console.error("Expense shares insert failed:", sharesError.code);
-
-      // Roll back the expense if saving shares fails.
-      const { error: rollbackError } = await supabase
-        .from("group_expenses")
-        .delete()
-        .eq("id", expense.id)
-        .eq("group_id", id);
-
-      if (rollbackError) {
-        console.error("Expense rollback failed:", rollbackError.code);
-      }
-
-      return fail("Unable to save expense shares.", 500);
-    }
-
-    return NextResponse.json({ expense }, { status: 201, headers });
+    return NextResponse.json(
+      {
+        expense: {
+          id: expenseId,
+        },
+      },
+      {
+        status: 201,
+        headers: noStoreHeaders,
+      },
+    );
   } catch {
     return fail("Unable to save expense.", 500);
   }
