@@ -22,6 +22,10 @@ type Expense = {
   amount_cents: number;
   paid_by: string;
   created_at: string;
+  shares: {
+    memberId: string;
+    shareCents: number;
+  }[];
 };
 
 type MemberBalance = {
@@ -65,6 +69,9 @@ function SharedGroupContent() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expensesLoading, setExpensesLoading] = useState(false);
   const [savingExpense, setSavingExpense] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(
+    null,
+  );
   const [expenseError, setExpenseError] = useState("");
 
   const [expenseDescription, setExpenseDescription] = useState("");
@@ -496,6 +503,68 @@ function SharedGroupContent() {
     }
   }
 
+  async function deleteExpense(expenseId: string) {
+    const expense = expenses.find((item) => item.id === expenseId);
+
+    if (!expense || deletingExpenseId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete "${expense.description}"?\n\n` +
+        `Amount: ${formatMoney(expense.amount_cents)}\n\n` +
+        "This will permanently delete the expense and its shares. " +
+        "Group balances will be recalculated.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const token = getPrivateToken();
+
+    if (!token) {
+      setExpenseError(
+        "Your private group token is missing. Open the complete private link.",
+      );
+      return;
+    }
+
+    setDeletingExpenseId(expenseId);
+    setExpenseError("");
+
+    try {
+      const response = await fetch(
+        `/api/groups/${encodeURIComponent(id)}/expenses/${encodeURIComponent(expenseId)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "x-group-token": token,
+          },
+          cache: "no-store",
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "Unable to delete expense.");
+      }
+
+      // Refresh the saved expense history.
+      await loadExpenses(token);
+
+      // Recalculate balances and settlements.
+      await loadBalances(token);
+    } catch (error) {
+      setExpenseError(
+        error instanceof Error ? error.message : "Unable to delete expense.",
+      );
+    } finally {
+      setDeletingExpenseId(null);
+    }
+  }
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -635,8 +704,8 @@ function SharedGroupContent() {
               <h2 className="text-2xl font-bold">Shared Expenses</h2>
 
               <p className="mt-2 text-slate-600">
-                Record an expense and split it equally among all current group
-                members.
+                Record shared expenses and split them equally or customize each
+                member&apos;s share.
               </p>
 
               <form onSubmit={addExpense} className="mt-6 space-y-4">
@@ -841,22 +910,72 @@ function SharedGroupContent() {
                       );
 
                       return (
-                        <li
-                          key={expense.id}
-                          className="flex items-start justify-between gap-4 p-4"
-                        >
-                          <div>
-                            <p className="font-semibold">
-                              {expense.description}
-                            </p>
-                            <p className="mt-1 text-sm text-slate-500">
-                              Paid by {payer?.name ?? "Unknown member"}
-                            </p>
+                        <li key={expense.id} className="p-4">
+                          {/* Expense description, payer, and total */}
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="font-semibold">
+                                {expense.description}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                Paid by {payer?.name ?? "Unknown member"}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-2">
+                              <p className="whitespace-nowrap font-bold">
+                                {formatMoney(expense.amount_cents)}
+                              </p>
+
+                              <button
+                                type="button"
+                                onClick={() => deleteExpense(expense.id)}
+                                disabled={deletingExpenseId !== null}
+                                className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {deletingExpenseId === expense.id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </button>
+                            </div>
                           </div>
 
-                          <p className="whitespace-nowrap font-bold">
-                            {formatMoney(expense.amount_cents)}
-                          </p>
+                          {/* Saved split details */}
+                          <div className="mt-4 border-t border-slate-200 pt-3">
+                            <p className="mb-2 text-sm font-semibold text-slate-700">
+                              Split details
+                            </p>
+
+                            {!expense.shares || expense.shares.length === 0 ? (
+                              <p className="text-sm text-slate-500">
+                                No split details available.
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {expense.shares.map((share) => {
+                                  const member = members.find(
+                                    (item) => item.id === share.memberId,
+                                  );
+
+                                  return (
+                                    <div
+                                      key={share.memberId}
+                                      className="flex items-center justify-between gap-3 text-sm"
+                                    >
+                                      <span className="text-slate-600">
+                                        {member?.name ?? "Unknown member"}
+                                      </span>
+
+                                      <span className="font-semibold text-slate-900">
+                                        {formatMoney(share.shareCents)}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </li>
                       );
                     })}
