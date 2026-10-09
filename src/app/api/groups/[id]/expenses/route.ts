@@ -65,12 +65,45 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     if (error) {
       console.error("Expense lookup failed:", error.code);
-
       return fail("Unable to load expenses.", 500);
     }
 
+    const expenseIds = (data ?? []).map((expense) => expense.id);
+
+    let savedShares: {
+      expense_id: string;
+      member_id: string;
+      share_cents: number;
+    }[] = [];
+
+    if (expenseIds.length > 0) {
+      const { data: sharesData, error: sharesError } = await supabase
+        .from("expense_shares")
+        .select("expense_id, member_id, share_cents")
+        .eq("group_id", id)
+        .in("expense_id", expenseIds);
+
+      if (sharesError) {
+        console.error("Expense share lookup failed:", sharesError.code);
+
+        return fail("Unable to load expense shares.", 500);
+      }
+
+      savedShares = sharesData ?? [];
+    }
+
+    const expensesWithShares = (data ?? []).map((expense) => ({
+      ...expense,
+      shares: savedShares
+        .filter((share) => share.expense_id === expense.id)
+        .map((share) => ({
+          memberId: share.member_id,
+          shareCents: share.share_cents,
+        })),
+    }));
+
     return NextResponse.json(
-      { expenses: data ?? [] },
+      { expenses: expensesWithShares },
       { headers: noStoreHeaders },
     );
   } catch {
