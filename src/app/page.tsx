@@ -42,7 +42,7 @@ const tools = [
     title: "Split Expenses",
     description: "Share expenses with friends, roommates, and family.",
     href: "/calculators/split-expenses",
-    available: false,
+    available: true,
   },
 ];
 
