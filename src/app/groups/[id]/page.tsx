@@ -72,6 +72,9 @@ function SharedGroupContent() {
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(
     null,
   );
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState("");
   const [expenseError, setExpenseError] = useState("");
 
   const [expenseDescription, setExpenseDescription] = useState("");
@@ -565,6 +568,167 @@ function SharedGroupContent() {
     }
   }
 
+  function startEditingExpense(expenseId: string) {
+    const expense = expenses.find((item) => item.id === expenseId);
+
+    if (!expense) {
+      return;
+    }
+
+    // Load the saved expense into the existing form.
+    setExpenseDescription(expense.description);
+    setExpenseAmount((expense.amount_cents / 100).toFixed(2));
+    setExpensePaidBy(expense.paid_by);
+
+    // Load the original participants and their shares.
+    setSelectedMemberIds(expense.shares.map((share) => share.memberId));
+
+    setCustomShares(
+      Object.fromEntries(
+        expense.shares.map((share) => [
+          share.memberId,
+          (share.shareCents / 100).toFixed(2),
+        ]),
+      ),
+    );
+
+    // Custom mode preserves the original saved amounts.
+    setSplitMode("custom");
+
+    setEditingExpenseId(expenseId);
+    setEditError("");
+
+    // Move the user to the expense form.
+    document.getElementById("expense-form")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+  function cancelEditingExpense() {
+    setEditingExpenseId(null);
+    setEditError("");
+    setExpenseDescription("");
+    setExpenseAmount("");
+    setExpensePaidBy("");
+    setSplitMode("equal");
+    setCustomShares({});
+    setSelectedMemberIds(members.map((member) => member.id));
+  }
+
+  async function updateExpense(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editingExpenseId || savingEdit) {
+      return;
+    }
+
+    const description = expenseDescription.trim();
+    const amountCents = parseDollarsToCents(expenseAmount);
+
+    if (!description || description.length > 200) {
+      setEditError("Enter a description between 1 and 200 characters.");
+      return;
+    }
+
+    if (
+      amountCents === null ||
+      amountCents <= 0 ||
+      amountCents > 100_000_000_000
+    ) {
+      setEditError("Enter a valid expense amount.");
+      return;
+    }
+
+    if (!expensePaidBy) {
+      setEditError("Select who paid.");
+      return;
+    }
+
+    if (selectedMemberIds.length === 0 || selectedMemberIds.length > 100) {
+      setEditError("Select between 1 and 100 participants.");
+      return;
+    }
+
+    let shares: { memberId: string; shareCents: number }[];
+
+    if (splitMode === "equal") {
+      const base = Math.floor(amountCents / selectedMemberIds.length);
+      const remainder = amountCents % selectedMemberIds.length;
+
+      shares = selectedMemberIds.map((memberId, index) => ({
+        memberId,
+        shareCents: base + (index < remainder ? 1 : 0),
+      }));
+    } else {
+      const parsed = selectedMemberIds.map((memberId) => ({
+        memberId,
+        shareCents: parseDollarsToCents(customShares[memberId] ?? ""),
+      }));
+
+      if (parsed.some((share) => share.shareCents === null)) {
+        setEditError("Enter a valid share for every selected member.");
+        return;
+      }
+
+      shares = parsed as { memberId: string; shareCents: number }[];
+
+      const total = shares.reduce((sum, share) => sum + share.shareCents, 0);
+
+      if (total !== amountCents) {
+        setEditError(
+          `Shares must total ${formatMoney(amountCents)}. ` +
+            `Current total: ${formatMoney(total)}.`,
+        );
+        return;
+      }
+    }
+
+    const token = getPrivateToken();
+
+    if (!token) {
+      setEditError("The private group token is missing.");
+      return;
+    }
+
+    setSavingEdit(true);
+    setEditError("");
+
+    try {
+      const response = await fetch(
+        `/api/groups/${encodeURIComponent(id)}/expenses/${encodeURIComponent(editingExpenseId)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-group-token": token,
+          },
+          body: JSON.stringify({
+            description,
+            amountCents,
+            paidBy: expensePaidBy,
+            shares,
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "Unable to update expense.");
+      }
+
+      await Promise.all([loadExpenses(token), loadBalances(token)]);
+
+      cancelEditingExpense();
+    } catch (error) {
+      setEditError(
+        error instanceof Error ? error.message : "Unable to update expense.",
+      );
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -708,7 +872,11 @@ function SharedGroupContent() {
                 member&apos;s share.
               </p>
 
-              <form onSubmit={addExpense} className="mt-6 space-y-4">
+              <form
+                id="expense-form"
+                onSubmit={editingExpenseId ? updateExpense : addExpense}
+                className="mt-6 space-y-4"
+              >
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold">
                     Expense description
@@ -873,13 +1041,34 @@ function SharedGroupContent() {
                   )}
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={savingExpense || members.length === 0}
-                  className="rounded-xl bg-blue-700 px-6 py-3 font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
-                >
-                  {savingExpense ? "Saving expense..." : "Add Expense"}
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="submit"
+                    disabled={
+                      savingExpense || savingEdit || members.length === 0
+                    }
+                    className="rounded-xl bg-blue-700 px-6 py-3 font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
+                  >
+                    {savingEdit
+                      ? "Saving changes..."
+                      : editingExpenseId
+                        ? "Save Changes"
+                        : savingExpense
+                          ? "Saving expense..."
+                          : "Add Expense"}
+                  </button>
+
+                  {editingExpenseId && (
+                    <button
+                      type="button"
+                      onClick={cancelEditingExpense}
+                      disabled={savingEdit}
+                      className="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
               </form>
 
               {expenseError && (
@@ -888,6 +1077,14 @@ function SharedGroupContent() {
                   className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"
                 >
                   {expenseError}
+                </p>
+              )}
+              {editError && (
+                <p
+                  role="alert"
+                  className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                >
+                  {editError}
                 </p>
               )}
 
@@ -927,6 +1124,17 @@ function SharedGroupContent() {
                               <p className="whitespace-nowrap font-bold">
                                 {formatMoney(expense.amount_cents)}
                               </p>
+
+                              <button
+                                type="button"
+                                onClick={() => startEditingExpense(expense.id)}
+                                disabled={
+                                  deletingExpenseId !== null || savingEdit
+                                }
+                                className="rounded-lg border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                              >
+                                Edit
+                              </button>
 
                               <button
                                 type="button"
