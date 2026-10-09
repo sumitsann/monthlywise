@@ -1,15 +1,18 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumbs from "@/components/breadcrumbs";
 import { CalculatorGuide } from "@/components/content-page";
 import PersonalLoanCalculator from "./calculator";
+import { calculatorJsonLd, JsonLd, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+const path = "/calculators/personal-loan";
+const description =
+  "Free personal loan calculator. Estimate monthly payments, total interest, and the true cost of origination fees, with an amortization schedule and extra-payment options.";
+
+export const metadata = pageMetadata({
   title: "Personal Loan Calculator with Origination Fees",
-  description:
-    "Free personal loan calculator. Estimate monthly payments, total interest, and the true cost of origination fees, with an amortization schedule and extra-payment options.",
-  alternates: { canonical: "/calculators/personal-loan" },
-};
+  description,
+  path,
+});
 
 const faqs = [
   {
@@ -33,11 +36,14 @@ const faqs = [
 export default function PersonalLoanPage() {
   return (
     <>
+      <JsonLd
+        data={calculatorJsonLd("Personal Loan Calculator", path, description)}
+      />
       <div className="bg-slate-50 px-4 pt-6 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <Breadcrumbs
             items={[
-              { title: "Calculators", href: "/#calculators" },
+              { title: "Calculators", href: "/calculators" },
               { title: "Personal Loan Calculator" },
             ]}
           />

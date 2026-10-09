@@ -1,50 +1,15 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import CalculatorGrid from "@/components/calculator-grid";
 import GuideList from "@/components/guide-list";
+import { JsonLd, organizationJsonLd, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-};
-
-const tools = [
-  {
-    icon: "🏠",
-    title: "Mortgage Calculator",
-    description:
-      "Estimate your monthly mortgage payment, including taxes and insurance.",
-    href: "/calculators/mortgage",
-  },
-  {
-    icon: "🚗",
-    title: "Auto Loan Calculator",
-    description: "Calculate car payments, interest, taxes, and fees.",
-    href: "/calculators/auto-loan",
-  },
-  {
-    icon: "💳",
-    title: "Credit Card Payoff",
-    description: "Find out how long it will take to pay off your credit card.",
-    href: "/calculators/credit-card",
-  },
-  {
-    icon: "💵",
-    title: "Personal Loan Calculator",
-    description: "Estimate loan payments and total interest.",
-    href: "/calculators/personal-loan",
-  },
-  {
-    icon: "📊",
-    title: "Household Budget",
-    description: "Plan monthly income, expenses, and savings.",
-    href: "/calculators/budget",
-  },
-  {
-    icon: "👥",
-    title: "Split Expenses",
-    description: "Share expenses with friends, roommates, and family.",
-    href: "/groups/new",
-  },
-];
+export const metadata = pageMetadata({
+  title: "Free Mortgage, Loan & Budget Calculators | MonthlyWise",
+  absoluteTitle: true,
+  description:
+    "Free mortgage, auto loan, personal loan, credit card payoff, budget, and split-expense calculators. Instant results, no sign-up, with plain-English money guides.",
+  path: "/",
+});
 
 const features = [
   {
@@ -64,16 +29,17 @@ const features = [
 export default function Home() {
   return (
     <main className="bg-slate-50 text-slate-900">
+      <JsonLd data={organizationJsonLd} />
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-4 pb-16 pt-14 text-center sm:px-6 sm:pt-20">
         <p className="inline-block rounded-full bg-blue-100 px-4 py-1.5 text-sm font-semibold text-blue-800 dark:bg-blue-950 dark:text-blue-200">
-          Free financial calculators
+          Mortgage · Auto loan · Credit card · Budget
         </p>
 
         <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-          Make smarter money decisions{" "}
+          Free financial calculators for{" "}
           <span className="text-blue-700 dark:text-blue-400">
-            every month.
+            smarter monthly decisions.
           </span>
         </h1>
 
@@ -115,29 +81,9 @@ export default function Home() {
           Choose a tool to get started.
         </p>
 
-        <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {tools.map((tool) => (
-            <li key={tool.href}>
-              <Link
-                href={tool.href}
-                className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg motion-reduce:hover:translate-y-0 dark:hover:border-blue-500"
-              >
-                <span aria-hidden="true" className="text-4xl">
-                  {tool.icon}
-                </span>
-                <span className="mt-5 text-xl font-bold text-slate-900 group-hover:text-blue-700 dark:group-hover:text-blue-300">
-                  {tool.title}
-                </span>
-                <span className="mt-3 flex-1 text-[15px] leading-6 text-slate-600">
-                  {tool.description}
-                </span>
-                <span className="mt-6 font-semibold text-blue-700 dark:text-blue-400">
-                  Open calculator <span aria-hidden="true">→</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-8">
+          <CalculatorGrid />
+        </div>
       </section>
 
       {/* Why MonthlyWise */}

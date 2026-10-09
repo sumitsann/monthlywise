@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import Breadcrumbs, { type Crumb } from "@/components/breadcrumbs";
+import { JsonLd } from "@/lib/seo";
 
 export function ContentPage({
   title,
@@ -80,10 +81,7 @@ export function CalculatorGuide({
           legal advice. See our <Link href="/disclaimer">disclaimer</Link>.
         </p>
       </article>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
+      <JsonLd data={faqJsonLd} />
     </section>
   );
 }

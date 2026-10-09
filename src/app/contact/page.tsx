@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
 import { ContentPage } from "@/components/content-page";
 import { CONTACT_EMAIL } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Contact Us",
   description:
     "Contact MonthlyWise with questions, feedback, bug reports, or calculator suggestions.",
-  alternates: { canonical: "/contact" },
-};
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (

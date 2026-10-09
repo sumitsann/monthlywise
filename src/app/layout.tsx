@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import Script from "next/script";
@@ -23,38 +23,45 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "MonthlyWise | Free Financial Calculators",
+    default: "Free Mortgage, Loan & Budget Calculators | MonthlyWise",
     template: "%s | MonthlyWise",
   },
   description:
-    "Make smarter financial decisions with free mortgage, auto loan, personal loan, credit card, budget, and shared-expense calculators.",
-  keywords: [
-    "MonthlyWise",
-    "mortgage calculator",
-    "car payment calculator",
-    "personal loan calculator",
-    "credit card payoff calculator",
-    "household budget calculator",
-    "split expenses",
-    "free financial calculators",
-  ],
-  openGraph: {
-    title: "MonthlyWise | Free Financial Calculators",
-    description:
-      "Free financial tools for mortgages, car loans, budgets, credit cards, and shared expenses.",
-    url: SITE_URL,
-    siteName: SITE_NAME,
-    type: "website",
+    "Free mortgage, auto loan, personal loan, credit card payoff, budget, and split-expense calculators with plain-English money guides.",
+  applicationName: SITE_NAME,
+  authors: [{ name: `${SITE_NAME} Editorial Team`, url: `${SITE_URL}/about` }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  formatDetection: { telephone: false, email: false, address: false },
+  openGraph: { siteName: SITE_NAME, locale: "en_US", type: "website" },
+  twitter: { card: "summary_large_image" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
   ...(ADSENSE_CLIENT && {
     other: { "google-adsense-account": ADSENSE_CLIENT },
   }),
 };
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+  ],
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="en-US"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >

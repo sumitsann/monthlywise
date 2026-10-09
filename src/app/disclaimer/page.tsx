@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
 import { ContentPage } from "@/components/content-page";
 import { CONTACT_EMAIL, LAST_UPDATED } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Disclaimer",
   description:
     "MonthlyWise calculators provide estimates for educational purposes only and are not financial advice.",
-  alternates: { canonical: "/disclaimer" },
-};
+  path: "/disclaimer",
+});
 
 export default function DisclaimerPage() {
   return (

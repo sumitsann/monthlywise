@@ -124,6 +124,14 @@ export default function SiteHeader() {
                     </Link>
                   </li>
                 ))}
+                <li className="mt-1 border-t border-slate-200 pt-1 dark:border-slate-700">
+                  <Link
+                    href="/calculators"
+                    className="block rounded-lg px-3 py-2 text-[15px] font-semibold text-blue-700 hover:bg-slate-100 dark:text-blue-300 dark:hover:bg-slate-800"
+                  >
+                    View all calculators
+                  </Link>
+                </li>
               </ul>
             )}
           </div>
@@ -180,9 +188,12 @@ export default function SiteHeader() {
           aria-label="Main"
           className="max-h-[calc(100vh-4rem)] overflow-y-auto border-t border-slate-200 bg-white px-4 pb-6 pt-4 md:hidden dark:border-slate-800 dark:bg-slate-950"
         >
-          <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Calculators
-          </p>
+          <Link
+            href="/calculators"
+            className="block px-3 text-xs font-semibold uppercase tracking-wider text-slate-600 hover:text-blue-700 dark:text-slate-300"
+          >
+            All calculators
+          </Link>
           <ul className="mt-2 space-y-1">
             {calculators.map((item) => (
               <li key={item.href}>

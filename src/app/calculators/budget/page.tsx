@@ -1,15 +1,18 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumbs from "@/components/breadcrumbs";
 import { CalculatorGuide } from "@/components/content-page";
 import BudgetCalculator from "./calculator";
+import { calculatorJsonLd, JsonLd, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+const path = "/calculators/budget";
+const description =
+  "Free monthly budget calculator. Track income and expenses, see your needs, wants, and savings split, and check your budget against the 50/30/20 rule.";
+
+export const metadata = pageMetadata({
   title: "Household Budget Calculator (50/30/20 Rule)",
-  description:
-    "Free monthly budget calculator. Track income and expenses, see your needs, wants, and savings split, and check your budget against the 50/30/20 rule.",
-  alternates: { canonical: "/calculators/budget" },
-};
+  description,
+  path,
+});
 
 const faqs = [
   {
@@ -33,11 +36,14 @@ const faqs = [
 export default function BudgetPage() {
   return (
     <>
+      <JsonLd
+        data={calculatorJsonLd("Budget Calculator", path, description)}
+      />
       <div className="bg-slate-50 px-4 pt-6 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <Breadcrumbs
             items={[
-              { title: "Calculators", href: "/#calculators" },
+              { title: "Calculators", href: "/calculators" },
               { title: "Budget Calculator" },
             ]}
           />

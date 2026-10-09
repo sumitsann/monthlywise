@@ -6,6 +6,7 @@ const lastModified = new Date("2026-10-09");
 
 const routes: { path: string; priority: number }[] = [
   { path: "", priority: 1 },
+  { path: "/calculators", priority: 0.9 },
   { path: "/calculators/mortgage", priority: 0.9 },
   { path: "/calculators/auto-loan", priority: 0.9 },
   { path: "/calculators/credit-card", priority: 0.9 },

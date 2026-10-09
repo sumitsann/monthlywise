@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
 import Breadcrumbs from "@/components/breadcrumbs";
 import GuideList from "@/components/guide-list";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Money Guides",
   description:
     "Clear, practical guides on mortgages, car loans, budgeting, credit card debt, and splitting shared expenses.",
-  alternates: { canonical: "/guides" },
-};
+  path: "/guides",
+});
 
 export default function GuidesPage() {
   return (

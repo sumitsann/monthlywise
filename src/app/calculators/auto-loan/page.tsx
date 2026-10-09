@@ -1,15 +1,18 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumbs from "@/components/breadcrumbs";
 import { CalculatorGuide } from "@/components/content-page";
 import AutoLoanCalculator from "./calculator";
+import { calculatorJsonLd, JsonLd, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+const path = "/calculators/auto-loan";
+const description =
+  "Free car payment calculator. Estimate your monthly auto loan payment including sales tax, dealer fees, add-ons, rebates, and trade-in value, with a full amortization schedule.";
+
+export const metadata = pageMetadata({
   title: "Auto Loan Calculator with Tax, Fees & Trade-In",
-  description:
-    "Free car payment calculator. Estimate your monthly auto loan payment including sales tax, dealer fees, add-ons, rebates, and trade-in value, with a full amortization schedule.",
-  alternates: { canonical: "/calculators/auto-loan" },
-};
+  description,
+  path,
+});
 
 const faqs = [
   {
@@ -37,11 +40,14 @@ const faqs = [
 export default function AutoLoanPage() {
   return (
     <>
+      <JsonLd
+        data={calculatorJsonLd("Auto Loan Calculator", path, description)}
+      />
       <div className="bg-slate-50 px-4 pt-6 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <Breadcrumbs
             items={[
-              { title: "Calculators", href: "/#calculators" },
+              { title: "Calculators", href: "/calculators" },
               { title: "Auto Loan Calculator" },
             ]}
           />

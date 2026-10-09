@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ContentPage } from "@/components/content-page";
 import { CONTACT_EMAIL, LAST_UPDATED } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Terms of Use",
-  description: "The terms that apply when you use MonthlyWise calculators and tools.",
-  alternates: { canonical: "/terms" },
-};
+  description:
+    "The terms that apply when you use MonthlyWise calculators and tools.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

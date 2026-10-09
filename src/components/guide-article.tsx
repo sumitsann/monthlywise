@@ -3,21 +3,18 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import Breadcrumbs from "@/components/breadcrumbs";
 import { formatDate, getGuide, guides } from "@/lib/guides";
+import { JsonLd, pageMetadata } from "@/lib/seo";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 export function guideMetadata(slug: string): Metadata {
   const guide = getGuide(slug);
-  return {
+  return pageMetadata({
     title: guide.title,
     description: guide.description,
-    alternates: { canonical: `/guides/${slug}` },
-    openGraph: {
-      title: guide.title,
-      description: guide.description,
-      type: "article",
-      publishedTime: guide.published,
-    },
-  };
+    path: `/guides/${slug}`,
+    type: "article",
+    publishedTime: guide.published,
+  });
 }
 
 export function GuideArticle({
@@ -37,8 +34,13 @@ export function GuideArticle({
     description: guide.description,
     datePublished: guide.published,
     dateModified: guide.published,
-    author: { "@type": "Organization", name: `${SITE_NAME} Editorial Team` },
-    publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+    image: `${SITE_URL}/opengraph-image`,
+    author: {
+      "@type": "Organization",
+      name: `${SITE_NAME} Editorial Team`,
+      url: `${SITE_URL}/about`,
+    },
+    publisher: { "@id": `${SITE_URL}/#organization` },
     mainEntityOfPage: `${SITE_URL}/guides/${slug}`,
   };
 
@@ -111,10 +113,7 @@ export function GuideArticle({
           </ul>
         </section>
       </div>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd data={jsonLd} />
     </main>
   );
 }

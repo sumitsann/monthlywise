@@ -1,15 +1,18 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumbs from "@/components/breadcrumbs";
 import { CalculatorGuide } from "@/components/content-page";
 import CreditCardCalculator from "./calculator";
+import { calculatorJsonLd, JsonLd, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+const path = "/calculators/credit-card";
+const description =
+  "Free credit card payoff calculator. See how long it will take to pay off your balance, how much interest you'll pay, and compare the avalanche and snowball methods across multiple cards.";
+
+export const metadata = pageMetadata({
   title: "Credit Card Payoff Calculator (Avalanche & Snowball)",
-  description:
-    "Free credit card payoff calculator. See how long it will take to pay off your balance, how much interest you'll pay, and compare the avalanche and snowball methods across multiple cards.",
-  alternates: { canonical: "/calculators/credit-card" },
-};
+  description,
+  path,
+});
 
 const faqs = [
   {
@@ -37,11 +40,14 @@ const faqs = [
 export default function CreditCardPage() {
   return (
     <>
+      <JsonLd
+        data={calculatorJsonLd("Credit Card Payoff Calculator", path, description)}
+      />
       <div className="bg-slate-50 px-4 pt-6 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <Breadcrumbs
             items={[
-              { title: "Calculators", href: "/#calculators" },
+              { title: "Calculators", href: "/calculators" },
               { title: "Credit Card Payoff Calculator" },
             ]}
           />

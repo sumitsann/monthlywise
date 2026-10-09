@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
 import { ContentPage } from "@/components/content-page";
 import { CONTACT_EMAIL, LAST_UPDATED } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Privacy Policy",
   description:
     "How MonthlyWise collects, uses, and protects information, including cookies and Google AdSense advertising.",
-  alternates: { canonical: "/privacy-policy" },
-};
+  path: "/privacy-policy",
+});
 
 export default function PrivacyPolicyPage() {
   return (
