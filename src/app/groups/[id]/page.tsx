@@ -877,6 +877,20 @@ function SharedGroupContent() {
                 onSubmit={editingExpenseId ? updateExpense : addExpense}
                 className="mt-6 space-y-4"
               >
+                {editingExpenseId && (
+                  <div
+                    role="status"
+                    className="rounded-xl border border-blue-200 bg-blue-50 p-4"
+                  >
+                    <p className="font-semibold text-blue-900">
+                      Editing Existing Expense
+                    </p>
+                    <p className="mt-1 text-sm text-blue-800">
+                      You are updating a saved expense. Click Save Changes to
+                      update it, or Cancel Edit to leave it unchanged.
+                    </p>
+                  </div>
+                )}
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold">
                     Expense description
@@ -1139,7 +1153,11 @@ function SharedGroupContent() {
                               <button
                                 type="button"
                                 onClick={() => deleteExpense(expense.id)}
-                                disabled={deletingExpenseId !== null}
+                                disabled={
+                                  deletingExpenseId !== null ||
+                                  editingExpenseId !== null ||
+                                  savingEdit
+                                }
                                 className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 {deletingExpenseId === expense.id
