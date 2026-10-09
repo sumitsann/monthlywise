@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
+import ThemeToggle from "@/components/theme-toggle";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,9 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MonthlyWise | Free Financial Calculators",
+  metadataBase: new URL("https://monthlywise-eta.vercel.app"),
+  title: {
+    default: "MonthlyWise | Free Financial Calculators",
+    template: "%s | MonthlyWise",
+  },
   description:
-    "Make smarter financial decisions with MonthlyWise. Calculate mortgage payments, auto loans, personal loans, credit card payoff plans, household budgets, and split group expenses for free.",
+    "Make smarter financial decisions with free mortgage, auto loan, personal loan, credit card, budget, and shared-expense calculators.",
   keywords: [
     "MonthlyWise",
     "mortgage calculator",
@@ -29,7 +35,9 @@ export const metadata: Metadata = {
   openGraph: {
     title: "MonthlyWise | Free Financial Calculators",
     description:
-      "Free, easy-to-use calculators for mortgages, car loans, budgets, credit cards, and shared expenses.",
+      "Free financial tools for mortgages, car loans, budgets, credit cards, and shared expenses.",
+    url: "https://monthlywise-eta.vercel.app",
+    siteName: "MonthlyWise",
     type: "website",
   },
 };
@@ -38,10 +46,33 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body suppressHydrationWarning className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col">
+        <Script id="monthlywise-theme-init" strategy="beforeInteractive">
+          {`
+            (function () {
+              try {
+                var saved = localStorage.getItem("monthlywise-theme");
+
+                var theme =
+                  saved === "light" || saved === "dark"
+                    ? saved
+                    : window.matchMedia("(prefers-color-scheme: dark)").matches
+                      ? "dark"
+                      : "light";
+
+                document.documentElement.dataset.theme = theme;
+              } catch (error) {
+                document.documentElement.dataset.theme = "light";
+              }
+            })();
+          `}
+        </Script>
+
         {children}
+        <ThemeToggle />
       </body>
     </html>
   );
