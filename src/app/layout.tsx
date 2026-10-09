@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import SiteFooter from "@/components/site-footer";
 import ThemeToggle from "@/components/theme-toggle";
 import { ADSENSE_CLIENT, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -88,6 +89,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <div className="flex-1">{children}</div>
         <SiteFooter />
         <ThemeToggle />
+        <SpeedInsights />
       </body>
     </html>
   );

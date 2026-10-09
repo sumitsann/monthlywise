@@ -46,6 +46,11 @@ export default function PrivacyPolicyPage() {
         addresses briefly to prevent abuse (for example, rate-limiting how many
         groups can be created) and do not use them to identify you.
       </p>
+      <p>
+        We use Vercel Speed Insights to measure page performance (such as load
+        times). It collects anonymous performance data and does not use
+        cookies.
+      </p>
 
       <h3>Preferences stored on your device</h3>
       <p>
