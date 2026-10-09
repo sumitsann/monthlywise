@@ -71,6 +71,12 @@ function SharedGroupContent() {
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expensePaidBy, setExpensePaidBy] = useState("");
 
+  const [splitMode, setSplitMode] = useState<"equal" | "custom">("equal");
+
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
+  const [customShares, setCustomShares] = useState<Record<string, string>>({});
+
   const [loading, setLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(false);
   const [savingMember, setSavingMember] = useState(false);
@@ -108,7 +114,21 @@ function SharedGroupContent() {
           throw new Error(result.error ?? "Unable to load members.");
         }
 
-        setMembers(result.members ?? []);
+        const loadedMembers = (result.members ?? []) as Member[];
+
+        setMembers(loadedMembers);
+
+        // Include newly added members by default, but preserve
+        // any selections the user already made.
+        setSelectedMemberIds((current) => {
+          if (current.length === 0) {
+            return loadedMembers.map((member) => member.id);
+          }
+
+          const validIds = new Set(loadedMembers.map((member) => member.id));
+
+          return current.filter((memberId) => validIds.has(memberId));
+        });
       } catch (caught) {
         setMemberError(
           caught instanceof Error ? caught.message : "Unable to load members.",
@@ -299,6 +319,35 @@ function SharedGroupContent() {
     }
   }
 
+  function toggleExpenseMember(memberId: string) {
+    setSelectedMemberIds((current) =>
+      current.includes(memberId)
+        ? current.filter((id) => id !== memberId)
+        : [...current, memberId],
+    );
+  }
+
+  function updateCustomShare(memberId: string, amount: string) {
+    setCustomShares((current) => ({
+      ...current,
+      [memberId]: amount,
+    }));
+  }
+
+  function parseDollarsToCents(value: string): number | null {
+    const text = value.trim();
+
+    if (!/^\d+(\.\d{1,2})?$/.test(text)) {
+      return null;
+    }
+
+    const [dollars, cents = ""] = text.split(".");
+
+    const result = Number(dollars) * 100 + Number(cents.padEnd(2, "0"));
+
+    return Number.isSafeInteger(result) ? result : null;
+  }
+
   async function addExpense(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -334,6 +383,66 @@ function SharedGroupContent() {
       return;
     }
 
+    if (selectedMemberIds.length === 0) {
+      setExpenseError("Select at least one member to share this expense.");
+      return;
+    }
+
+    if (selectedMemberIds.length > 100) {
+      setExpenseError("A split can include up to 100 members.");
+      return;
+    }
+
+    let expenseShares: {
+      memberId: string;
+      shareCents: number;
+    }[];
+
+    if (splitMode === "equal") {
+      const baseShare = Math.floor(amountCents / selectedMemberIds.length);
+
+      const remainder = amountCents % selectedMemberIds.length;
+
+      expenseShares = selectedMemberIds.map((memberId, index) => ({
+        memberId,
+        shareCents: baseShare + (index < remainder ? 1 : 0),
+      }));
+    } else {
+      const shares = selectedMemberIds.map((memberId) => ({
+        memberId,
+        shareCents: parseDollarsToCents(customShares[memberId] ?? ""),
+      }));
+
+      if (
+        shares.some(
+          (share) => share.shareCents === null || share.shareCents < 0,
+        )
+      ) {
+        setExpenseError(
+          "Enter a valid custom amount for every selected member.",
+        );
+        return;
+      }
+
+      expenseShares = shares as {
+        memberId: string;
+        shareCents: number;
+      }[];
+
+      const shareTotal = expenseShares.reduce(
+        (sum, share) => sum + share.shareCents,
+        0,
+      );
+
+      if (shareTotal !== amountCents) {
+        setExpenseError(
+          `Custom shares must total ${formatMoney(amountCents)}. ` +
+            `Current total: ${formatMoney(shareTotal)}.`,
+        );
+        return;
+      }
+    }
+
     const token = getPrivateToken();
 
     if (!token) {
@@ -353,10 +462,12 @@ function SharedGroupContent() {
             "Content-Type": "application/json",
             "x-group-token": token,
           },
+
           body: JSON.stringify({
             description,
             amountCents,
             paidBy: expensePaidBy,
+            shares: expenseShares,
           }),
         },
       );
@@ -369,6 +480,10 @@ function SharedGroupContent() {
 
       setExpenseDescription("");
       setExpenseAmount("");
+
+      setSplitMode("equal");
+      setCustomShares({});
+      setSelectedMemberIds(members.map((member) => member.id));
 
       await loadExpenses(token);
       await loadBalances(token);
@@ -576,6 +691,117 @@ function SharedGroupContent() {
                       ))}
                     </select>
                   </label>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <h3 className="font-semibold">
+                    How should this expense be split?
+                  </h3>
+
+                  <div className="mt-4 flex flex-wrap gap-5">
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="radio"
+                        name="splitMode"
+                        checked={splitMode === "equal"}
+                        onChange={() => setSplitMode("equal")}
+                      />
+                      <span>Equal Split</span>
+                    </label>
+
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="radio"
+                        name="splitMode"
+                        checked={splitMode === "custom"}
+                        onChange={() => setSplitMode("custom")}
+                      />
+                      <span>Custom Split</span>
+                    </label>
+                  </div>
+
+                  <p className="mt-5 text-sm font-semibold">
+                    Select participating members
+                  </p>
+
+                  <div className="mt-3 space-y-3">
+                    {members.map((member) => {
+                      const selected = selectedMemberIds.includes(member.id);
+
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 p-3"
+                        >
+                          <label className="flex cursor-pointer items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => toggleExpenseMember(member.id)}
+                              className="h-4 w-4"
+                            />
+
+                            <span className="font-medium">{member.name}</span>
+                          </label>
+
+                          {selected && splitMode === "custom" && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-slate-500">$</span>
+
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={customShares[member.id] ?? ""}
+                                onChange={(event) =>
+                                  updateCustomShare(
+                                    member.id,
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="0.00"
+                                aria-label={`Share for ${member.name}`}
+                                className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-right"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {splitMode === "equal" && (
+                    <p className="mt-4 text-sm text-slate-600">
+                      The total will be divided equally among{" "}
+                      {selectedMemberIds.length} selected{" "}
+                      {selectedMemberIds.length === 1 ? "member" : "members"}.
+                    </p>
+                  )}
+
+                  {splitMode === "custom" && (
+                    <div className="mt-5 rounded-lg bg-blue-50 p-4">
+                      <p className="text-sm font-medium text-slate-700">
+                        Custom shares total
+                      </p>
+
+                      <p className="mt-1 text-xl font-bold text-blue-800">
+                        {formatMoney(
+                          selectedMemberIds.reduce((sum, memberId) => {
+                            return (
+                              sum +
+                              (parseDollarsToCents(
+                                customShares[memberId] ?? "",
+                              ) ?? 0)
+                            );
+                          }, 0),
+                        )}
+                      </p>
+
+                      <p className="mt-1 text-sm text-slate-600">
+                        Expense total:{" "}
+                        {formatMoney(parseDollarsToCents(expenseAmount) ?? 0)}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <button
