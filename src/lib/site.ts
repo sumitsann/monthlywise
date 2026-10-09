@@ -1,6 +1,6 @@
 export const SITE_URL = "https://www.monthlywise.com";
 export const SITE_NAME = "MonthlyWise";
-export const CONTACT_EMAIL = "contact@monthlywise.com";
+export const CONTACT_EMAIL = "sumit.o4172@gmail.com";
 
 // Set NEXT_PUBLIC_ADSENSE_CLIENT (e.g. "ca-pub-1234567890123456") in Vercel
 // to load the AdSense script and serve /ads.txt.
