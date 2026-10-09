@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Breadcrumbs from "@/components/breadcrumbs";
 import { CalculatorGuide } from "@/components/content-page";
 import MortgageCalculator from "./calculator";
 
@@ -36,6 +37,16 @@ const faqs = [
 export default function MortgagePage() {
   return (
     <>
+      <div className="bg-slate-50 px-4 pt-6 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <Breadcrumbs
+            items={[
+              { title: "Calculators", href: "/#calculators" },
+              { title: "Mortgage Calculator" },
+            ]}
+          />
+        </div>
+      </div>
       <MortgageCalculator />
       <CalculatorGuide title="How to use the mortgage calculator" faqs={faqs}>
         <p>

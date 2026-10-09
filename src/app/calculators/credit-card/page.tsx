@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Breadcrumbs from "@/components/breadcrumbs";
 import { CalculatorGuide } from "@/components/content-page";
 import CreditCardCalculator from "./calculator";
 
@@ -36,6 +37,16 @@ const faqs = [
 export default function CreditCardPage() {
   return (
     <>
+      <div className="bg-slate-50 px-4 pt-6 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <Breadcrumbs
+            items={[
+              { title: "Calculators", href: "/#calculators" },
+              { title: "Credit Card Payoff Calculator" },
+            ]}
+          />
+        </div>
+      </div>
       <CreditCardCalculator />
       <CalculatorGuide
         title="How to use the credit card payoff calculator"

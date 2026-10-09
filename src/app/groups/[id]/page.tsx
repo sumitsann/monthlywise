@@ -742,9 +742,6 @@ function SharedGroupContent() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-900">
       <div className="mx-auto max-w-3xl">
-        <Link href="/" className="font-medium text-blue-700 hover:underline">
-          ← Back to MonthlyWise
-        </Link>
 
         {loading ? (
           <div className="mt-8 rounded-2xl border bg-white p-7">

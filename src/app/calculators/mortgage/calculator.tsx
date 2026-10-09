@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 
 type Mode = "basic" | "advanced";
 type DownMode = "dollars" | "percent";
@@ -155,13 +154,10 @@ export default function MortgageCalculator() {
   );
 
   return (
-    <main className="bg-slate-50 px-4 py-10 text-slate-900 sm:px-6">
+    <main className="bg-slate-50 px-4 pb-10 pt-4 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-6xl">
-        <Link href="/" className="font-medium text-blue-700 hover:underline">
-          ← Back to MonthlyWise
-        </Link>
 
-        <h1 className="mt-7 text-3xl font-bold sm:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           Mortgage Payment Calculator
         </h1>
 

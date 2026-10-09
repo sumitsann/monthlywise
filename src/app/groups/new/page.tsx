@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function NewGroupPage() {
@@ -63,11 +62,8 @@ export default function NewGroupPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-900">
       <div className="mx-auto max-w-xl">
-        <Link href="/" className="font-medium text-blue-700 hover:underline">
-          ← Back to MonthlyWise
-        </Link>
 
-        <div className="mt-8 rounded-2xl border bg-white p-7 shadow-sm">
+        <div className="rounded-2xl border bg-white p-7 shadow-sm">
           <h1 className="text-3xl font-bold">Create Shared Expense Group</h1>
 
           <p className="mt-3 text-slate-600">

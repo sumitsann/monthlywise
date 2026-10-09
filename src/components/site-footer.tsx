@@ -2,6 +2,7 @@ import Link from "next/link";
 import { calculators } from "@/lib/site";
 
 const companyLinks = [
+  { title: "Guides", href: "/guides" },
   { title: "About", href: "/about" },
   { title: "Contact", href: "/contact" },
   { title: "Privacy Policy", href: "/privacy-policy" },

@@ -1,26 +1,29 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import Breadcrumbs, { type Crumb } from "@/components/breadcrumbs";
 
 export function ContentPage({
   title,
   updated,
+  crumbs,
   children,
 }: {
   title: string;
   updated?: string;
+  crumbs?: Crumb[];
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 sm:px-6">
+    <main className="bg-slate-50 px-4 pb-16 pt-6 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <Link href="/" className="font-medium text-blue-700 hover:underline">
-          ← Back to MonthlyWise
-        </Link>
+        <Breadcrumbs items={crumbs ?? [{ title }]} />
 
-        <article className="prose-content mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
-          <h1 className="text-3xl font-bold sm:text-4xl">{title}</h1>
+        <article className="prose-content mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            {title}
+          </h1>
           {updated && (
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="!mt-2 text-sm text-slate-600">
               Last updated: {updated}
             </p>
           )}

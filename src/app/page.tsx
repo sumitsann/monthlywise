@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import GuideList from "@/components/guide-list";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -41,127 +42,156 @@ const tools = [
     icon: "👥",
     title: "Split Expenses",
     description: "Share expenses with friends, roommates, and family.",
-    href: "/calculators/split-expenses",
+    href: "/groups/new",
+  },
+];
+
+const features = [
+  {
+    title: "Instant results",
+    text: "Every calculator updates as you type. No sign-up, no email required.",
+  },
+  {
+    title: "Private by design",
+    text: "Calculator inputs stay in your browser and are never sent to our servers.",
+  },
+  {
+    title: "Transparent math",
+    text: "See amortization schedules, total interest, and the formulas behind each result.",
   },
 ];
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      {/* Header */}
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <Link
-            href="/"
-            className="text-2xl font-bold text-blue-700 dark:text-blue-400"
-          >
-            MonthlyWise
-          </Link>
+    <main className="bg-slate-50 text-slate-900">
+      {/* Hero */}
+      <section className="mx-auto max-w-6xl px-4 pb-16 pt-14 text-center sm:px-6 sm:pt-20">
+        <p className="inline-block rounded-full bg-blue-100 px-4 py-1.5 text-sm font-semibold text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+          Free financial calculators
+        </p>
 
-          <nav
-            aria-label="Main navigation"
-            className="flex items-center gap-5 text-sm font-medium"
-          >
-            <a
-              href="#calculators"
-              className="hover:text-blue-700 dark:hover:text-blue-400"
-            >
-              Calculators
-            </a>
-            <Link
-              href="/about"
-              className="hover:text-blue-700 dark:hover:text-blue-400"
-            >
-              About
-            </Link>
-            <Link
-              href="/contact"
-              className="hover:text-blue-700 dark:hover:text-blue-400"
-            >
-              Contact
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="mx-auto max-w-6xl px-6 py-20 text-center">
-        <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-          Free Financial Tools
-        </span>
-
-        <h1 className="mt-7 text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-6xl">
-          Make smarter money decisions
-          <span className="block text-blue-700 dark:text-blue-400">
-            with MonthlyWise.
+        <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+          Make smarter money decisions{" "}
+          <span className="text-blue-700 dark:text-blue-400">
+            every month.
           </span>
         </h1>
 
-        <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-300">
+        <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
           Simple, free calculators for mortgages, car loans, credit cards,
-          personal loans, household budgets, and shared expenses.
+          personal loans, household budgets, and shared expenses, plus
+          plain-English guides to help you understand the numbers.
         </p>
 
-        <a
-          href="#calculators"
-          className="mt-8 inline-block rounded-xl bg-blue-700 px-7 py-3 font-semibold text-white transition hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500"
-        >
-          Explore Calculators
-        </a>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <a
+            href="#calculators"
+            className="w-full rounded-xl bg-blue-700 px-7 py-3 font-semibold text-white transition hover:bg-blue-800 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-500"
+          >
+            Explore calculators
+          </a>
+          <Link
+            href="/guides"
+            className="w-full rounded-xl border border-slate-300 bg-white px-7 py-3 font-semibold text-slate-900 transition hover:border-blue-400 hover:text-blue-700 sm:w-auto"
+          >
+            Read money guides
+          </Link>
+        </div>
       </section>
 
-      {/* Calculators Section */}
+      {/* Calculators */}
       <section
         id="calculators"
-        className="mx-auto max-w-6xl scroll-mt-8 px-6 pb-20"
+        aria-labelledby="calculators-heading"
+        className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-20 sm:px-6"
       >
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
-            Explore our tools
-          </h2>
-          <p className="mt-2 text-slate-600 dark:text-slate-300">
-            Choose a calculator to get started.
-          </p>
-        </div>
+        <h2
+          id="calculators-heading"
+          className="text-3xl font-bold tracking-tight text-slate-900"
+        >
+          Calculators
+        </h2>
+        <p className="mt-2 text-lg text-slate-600">
+          Choose a tool to get started.
+        </p>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {tools.map((tool) => (
-            <Link
-              key={tool.href}
-              href={tool.href}
-              className="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-500"
-            >
-              <div className="mb-5 text-4xl">{tool.icon}</div>
-
-              <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-700 dark:text-white dark:group-hover:text-blue-400">
-                {tool.title}
-              </h3>
-
-              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {tool.description}
-              </p>
-
-              <div className="mt-6 font-semibold text-blue-700 dark:text-blue-400">
-                Open calculator →
-              </div>
-            </Link>
+            <li key={tool.href}>
+              <Link
+                href={tool.href}
+                className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg motion-reduce:hover:translate-y-0 dark:hover:border-blue-500"
+              >
+                <span aria-hidden="true" className="text-4xl">
+                  {tool.icon}
+                </span>
+                <span className="mt-5 text-xl font-bold text-slate-900 group-hover:text-blue-700 dark:group-hover:text-blue-300">
+                  {tool.title}
+                </span>
+                <span className="mt-3 flex-1 text-[15px] leading-6 text-slate-600">
+                  {tool.description}
+                </span>
+                <span className="mt-6 font-semibold text-blue-700 dark:text-blue-400">
+                  Open calculator <span aria-hidden="true">→</span>
+                </span>
+              </Link>
+            </li>
           ))}
+        </ul>
+      </section>
+
+      {/* Why MonthlyWise */}
+      <section
+        aria-labelledby="why-heading"
+        className="border-y border-slate-200 bg-white px-4 py-16 sm:px-6"
+      >
+        <div className="mx-auto max-w-6xl">
+          <h2
+            id="why-heading"
+            className="text-center text-3xl font-bold tracking-tight text-slate-900"
+          >
+            Financial planning made simple
+          </h2>
+          <ul className="mt-10 grid gap-8 sm:grid-cols-3">
+            {features.map((feature) => (
+              <li key={feature.title} className="text-center">
+                <h3 className="text-lg font-bold text-slate-900">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 leading-7 text-slate-600">{feature.text}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
-      {/* About Section */}
+      {/* Guides */}
       <section
-        id="about"
-        className="bg-blue-50 px-6 py-16 text-center dark:bg-slate-900"
+        aria-labelledby="guides-heading"
+        className="mx-auto max-w-6xl px-4 py-20 sm:px-6"
       >
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Financial planning made simple
-        </h2>
-
-        <p className="mx-auto mt-4 max-w-2xl text-slate-600 dark:text-slate-300">
-          MonthlyWise helps you understand monthly payments, manage your budget,
-          and split shared expenses without complicated spreadsheets.
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2
+              id="guides-heading"
+              className="text-3xl font-bold tracking-tight text-slate-900"
+            >
+              Latest guides
+            </h2>
+            <p className="mt-2 text-lg text-slate-600">
+              Learn the ideas behind the numbers.
+            </p>
+          </div>
+          <Link
+            href="/guides"
+            className="font-semibold text-blue-700 hover:underline dark:text-blue-400"
+          >
+            View all guides <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+        <div className="mt-8">
+          <GuideList limit={3} />
+        </div>
       </section>
     </main>
   );

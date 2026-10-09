@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import SiteFooter from "@/components/site-footer";
+import SiteHeader from "@/components/site-header";
 import ThemeToggle from "@/components/theme-toggle";
 import { ADSENSE_CLIENT, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
@@ -86,7 +87,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           `}
         </Script>
 
-        <div className="flex-1">{children}</div>
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        <SiteHeader />
+        <div id="main-content" tabIndex={-1} className="flex-1 outline-none">
+          {children}
+        </div>
         <SiteFooter />
         <ThemeToggle />
         <SpeedInsights />
