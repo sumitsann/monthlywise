@@ -1,69 +1,128 @@
-import Image from "next/image";
+import Link from "next/link";
+
+const tools = [
+  {
+    icon: "🏠",
+    title: "Mortgage Calculator",
+    description:
+      "Estimate your monthly mortgage payment, including taxes and insurance.",
+    href: "/mortgage",
+  },
+  {
+    icon: "🚗",
+    title: "Auto Loan Calculator",
+    description: "Calculate car payments, interest, taxes, and fees.",
+    href: "/auto-loan",
+  },
+  {
+    icon: "💳",
+    title: "Credit Card Payoff",
+    description: "Find out how long it will take to pay off your credit card.",
+    href: "/credit-card",
+  },
+  {
+    icon: "💵",
+    title: "Personal Loan Calculator",
+    description: "Estimate loan payments and total interest.",
+    href: "/personal-loan",
+  },
+  {
+    icon: "📊",
+    title: "Household Budget",
+    description: "Plan monthly income, expenses, and savings.",
+    href: "/budget",
+  },
+  {
+    icon: "👥",
+    title: "Split Expenses",
+    description: "Share expenses with friends, roommates, and family.",
+    href: "/split-expenses",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-slate-50 text-slate-900">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+          <Link href="/" className="text-2xl font-bold text-blue-700">
+            MonthlyWise
+          </Link>
+          <nav className="flex items-center gap-5 text-sm font-medium">
+            <a href="#calculators" className="hover:text-blue-700">
+              Calculators
+            </a>
+            <a href="#about" className="hover:text-blue-700">
+              About
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      <section className="mx-auto max-w-6xl px-6 py-20 text-center">
+        <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700">
+          Free Financial Tools
+        </span>
+
+        <h1 className="mt-7 text-4xl font-extrabold tracking-tight sm:text-6xl">
+          Make smarter money decisions
+          <span className="block text-blue-700">with MonthlyWise.</span>
+        </h1>
+
+        <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
+          Simple, free calculators for mortgages, car loans, credit cards,
+          personal loans, household budgets, and shared expenses.
+        </p>
+
+        <a
+          href="#calculators"
+          className="mt-8 inline-block rounded-xl bg-blue-700 px-7 py-3 font-semibold text-white hover:bg-blue-800"
+        >
+          Explore Calculators
+        </a>
+      </section>
+
+      <section id="calculators" className="mx-auto max-w-6xl px-6 pb-20">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold">Explore our tools</h2>
+          <p className="mt-2 text-slate-600">
+            Choose a calculator to get started.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {tools.map((tool) => (
+            <Link
+              key={tool.href}
+              href={tool.href}
+              className="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg"
+            >
+              <div className="mb-5 text-4xl">{tool.icon}</div>
+              <h3 className="text-xl font-bold group-hover:text-blue-700">
+                {tool.title}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {tool.description}
+              </p>
+              <div className="mt-6 font-semibold text-blue-700">
+                Open calculator →
+              </div>
+            </Link>
+          ))}
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section id="about" className="bg-blue-50 px-6 py-16 text-center">
+        <h2 className="text-2xl font-bold">Financial planning made simple</h2>
+        <p className="mx-auto mt-4 max-w-2xl text-slate-600">
+          MonthlyWise helps you understand monthly payments, manage your budget,
+          and split shared expenses without complicated spreadsheets.
+        </p>
+      </section>
+
+      <footer className="border-t border-slate-200 bg-white px-6 py-8 text-center text-sm text-slate-500">
+        © 2026 MonthlyWise. Free financial calculators.
+      </footer>
+    </main>
   );
 }
