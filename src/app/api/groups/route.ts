@@ -1,11 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-
-// export const runtime = "nodejs";
+import { createGroupRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    // STEP 1: Rate-limit group creation requests.
+    // Only use this header when the request comes through
+    // a trusted Vercel proxy.
+    const isProduction = process.env.NODE_ENV === "production";
+
+    const clientIp = isProduction
+      ? request.headers.get("x-vercel-forwarded-for")
+      : "local-development";
+
+    if (!clientIp) {
+      return NextResponse.json(
+        { error: "Unable to verify request origin." },
+        { status: 503 },
+      );
+    }
+
+    {
+      try {
+        const { success, reset } = await createGroupRateLimit.limit(
+          `ip:${clientIp}`,
+        );
+
+        if (!success) {
+          return NextResponse.json(
+            {
+              error:
+                "Too many group creation attempts. Please try again later.",
+            },
+            {
+              status: 429,
+              headers: {
+                "Retry-After": String(
+                  Math.max(1, Math.ceil((reset - Date.now()) / 1000)),
+                ),
+                "Cache-Control": "no-store",
+              },
+            },
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Group creation rate-limit check failed:",
+          error instanceof Error ? error.message : "Unknown error",
+        );
+
+        return NextResponse.json(
+          {
+            error: "Service temporarily unavailable.",
+          },
+          { status: 503 },
+        );
+      }
+    }
+
+    // STEP 2: Require JSON.
     const contentType = request.headers.get("content-type") ?? "";
 
     if (!contentType.includes("application/json")) {
@@ -15,6 +69,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // STEP 3: Read and validate the group name.
     const body = await request.json();
 
     if (
@@ -38,12 +93,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a cryptographically random access token.
+    // STEP 4: Generate a secure private access token.
     const token = randomBytes(32).toString("base64url");
 
-    // Store only its SHA-256 hash in Supabase.
+    // Store only the SHA-256 hash in Supabase.
     const tokenHash = createHash("sha256").update(token).digest("hex");
 
+    // STEP 5: Create the group in Supabase.
     const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
@@ -64,6 +120,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // STEP 6: Return the new group and its private token.
     return NextResponse.json(
       {
         id: data.id,
