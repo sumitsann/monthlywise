@@ -16,6 +16,21 @@ type Member = {
   created_at: string;
 };
 
+type Expense = {
+  id: string;
+  description: string;
+  amount_cents: number;
+  paid_by: string;
+  created_at: string;
+};
+
+function formatMoney(cents: number) {
+  return (cents / 100).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+}
+
 function getPrivateToken() {
   const fragment = window.location.hash;
 
@@ -30,6 +45,15 @@ function SharedGroupContent() {
 
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expensesLoading, setExpensesLoading] = useState(false);
+  const [savingExpense, setSavingExpense] = useState(false);
+  const [expenseError, setExpenseError] = useState("");
+
+  const [expenseDescription, setExpenseDescription] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expensePaidBy, setExpensePaidBy] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -74,6 +98,40 @@ function SharedGroupContent() {
     [id],
   );
 
+  const loadExpenses = useCallback(
+    async (token: string) => {
+      setExpensesLoading(true);
+      setExpenseError("");
+
+      try {
+        const response = await fetch(
+          `/api/groups/${encodeURIComponent(id)}/expenses`,
+          {
+            headers: {
+              "x-group-token": token,
+            },
+            cache: "no-store",
+          },
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error ?? "Unable to load expenses.");
+        }
+
+        setExpenses(result.expenses ?? []);
+      } catch (caught) {
+        setExpenseError(
+          caught instanceof Error ? caught.message : "Unable to load expenses.",
+        );
+      } finally {
+        setExpensesLoading(false);
+      }
+    },
+    [id],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -106,6 +164,7 @@ function SharedGroupContent() {
         if (!cancelled) {
           setGroup(result as Group);
           await loadMembers(token);
+          await loadExpenses(token);
         }
       } catch (caught) {
         if (!cancelled) {
@@ -125,7 +184,7 @@ function SharedGroupContent() {
     return () => {
       cancelled = true;
     };
-  }, [id, loadMembers]);
+  }, [id, loadMembers, loadExpenses]);
 
   async function addMember(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -175,6 +234,87 @@ function SharedGroupContent() {
       );
     } finally {
       setSavingMember(false);
+    }
+  }
+
+  async function addExpense(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const description = expenseDescription.trim();
+    const amountText = expenseAmount.trim();
+
+    if (!description || description.length > 200) {
+      setExpenseError("Enter a description between 1 and 200 characters.");
+      return;
+    }
+
+    // Accept dollars with up to two decimal places.
+    if (!/^\d+(\.\d{1,2})?$/.test(amountText)) {
+      setExpenseError("Enter an amount such as 25 or 25.50.");
+      return;
+    }
+
+    const [dollars, cents = ""] = amountText.split(".");
+
+    const amountCents = Number(dollars) * 100 + Number(cents.padEnd(2, "0"));
+
+    if (
+      !Number.isSafeInteger(amountCents) ||
+      amountCents <= 0 ||
+      amountCents > 100000000000
+    ) {
+      setExpenseError("Enter a valid expense amount.");
+      return;
+    }
+
+    if (!expensePaidBy) {
+      setExpenseError("Select who paid.");
+      return;
+    }
+
+    const token = getPrivateToken();
+
+    if (!token) {
+      setExpenseError("The private token is missing from this link.");
+      return;
+    }
+
+    setSavingExpense(true);
+    setExpenseError("");
+
+    try {
+      const response = await fetch(
+        `/api/groups/${encodeURIComponent(id)}/expenses`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-group-token": token,
+          },
+          body: JSON.stringify({
+            description,
+            amountCents,
+            paidBy: expensePaidBy,
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "Unable to save expense.");
+      }
+
+      setExpenseDescription("");
+      setExpenseAmount("");
+
+      await loadExpenses(token);
+    } catch (caught) {
+      setExpenseError(
+        caught instanceof Error ? caught.message : "Unable to save expense.",
+      );
+    } finally {
+      setSavingExpense(false);
     }
   }
 
@@ -314,14 +454,126 @@ function SharedGroupContent() {
             </section>
 
             <section className="rounded-2xl border bg-white p-7 shadow-sm">
-              <h2 className="text-xl font-bold">
-                Shared Expenses &amp; Settlements
-              </h2>
+              <h2 className="text-2xl font-bold">Shared Expenses</h2>
 
-              <p className="mt-3 text-slate-600">
-                Next, we&apos;ll add expenses, track who paid, calculate
-                balances, and suggest settlements.
+              <p className="mt-2 text-slate-600">
+                Record an expense and split it equally among all current group
+                members.
               </p>
+
+              <form onSubmit={addExpense} className="mt-6 space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold">
+                    Expense description
+                  </span>
+                  <input
+                    type="text"
+                    value={expenseDescription}
+                    onChange={(event) =>
+                      setExpenseDescription(event.target.value)
+                    }
+                    placeholder="Example: Hotel booking"
+                    maxLength={200}
+                    required
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                  />
+                </label>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold">
+                      Amount ($)
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={expenseAmount}
+                      onChange={(event) => setExpenseAmount(event.target.value)}
+                      placeholder="300.00"
+                      required
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold">
+                      Paid by
+                    </span>
+                    <select
+                      value={expensePaidBy}
+                      onChange={(event) => setExpensePaidBy(event.target.value)}
+                      required
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
+                    >
+                      <option value="">Select member</option>
+                      {members.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={savingExpense || members.length === 0}
+                  className="rounded-xl bg-blue-700 px-6 py-3 font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
+                >
+                  {savingExpense ? "Saving expense..." : "Add Expense"}
+                </button>
+              </form>
+
+              {expenseError && (
+                <p
+                  role="alert"
+                  className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                >
+                  {expenseError}
+                </p>
+              )}
+
+              <div className="mt-8">
+                <h3 className="text-lg font-bold">
+                  Recorded Expenses ({expenses.length})
+                </h3>
+
+                {expensesLoading ? (
+                  <p className="mt-3 text-slate-500">Loading expenses...</p>
+                ) : expenses.length === 0 ? (
+                  <p className="mt-3 text-slate-500">
+                    No expenses recorded yet.
+                  </p>
+                ) : (
+                  <ul className="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200">
+                    {expenses.map((expense) => {
+                      const payer = members.find(
+                        (member) => member.id === expense.paid_by,
+                      );
+
+                      return (
+                        <li
+                          key={expense.id}
+                          className="flex items-start justify-between gap-4 p-4"
+                        >
+                          <div>
+                            <p className="font-semibold">
+                              {expense.description}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              Paid by {payer?.name ?? "Unknown member"}
+                            </p>
+                          </div>
+
+                          <p className="whitespace-nowrap font-bold">
+                            {formatMoney(expense.amount_cents)}
+                          </p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </section>
           </div>
         ) : null}
