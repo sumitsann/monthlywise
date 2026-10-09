@@ -33,6 +33,9 @@ export const metadata: Metadata = {
   creator: SITE_NAME,
   publisher: SITE_NAME,
   formatDetection: { telephone: false, email: false, address: false },
+  verification: {
+    other: { "msvalidate.01": "E36741BB342C8EFB4001FE53570ED024" },
+  },
   openGraph: { siteName: SITE_NAME, locale: "en_US", type: "website" },
   twitter: { card: "summary_large_image" },
   robots: {
