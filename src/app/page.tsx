@@ -35,7 +35,7 @@ const tools = [
     title: "Household Budget",
     description: "Plan monthly income, expenses, and savings.",
     href: "/calculators/budget",
-    available: false,
+    available: true,
   },
   {
     icon: "👥",
