@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import Script from "next/script";
+import { Suspense } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import SiteFooter from "@/components/site-footer";
 import SiteHeader from "@/components/site-header";
@@ -90,7 +92,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <SiteHeader />
+        {/* usePathname needs a Suspense boundary on dynamic routes */}
+        <Suspense fallback={<HeaderFallback />}>
+          <SiteHeader />
+        </Suspense>
         <div id="main-content" tabIndex={-1} className="flex-1 outline-none">
           {children}
         </div>
@@ -99,5 +104,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SpeedInsights />
       </body>
     </html>
+  );
+}
+
+function HeaderFallback() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+      <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6">
+        <Link
+          href="/"
+          className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white"
+        >
+          Monthly<span className="text-blue-700 dark:text-blue-400">Wise</span>
+        </Link>
+      </div>
+    </header>
   );
 }
