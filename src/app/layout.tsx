@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import SiteFooter from "@/components/site-footer";
 import ThemeToggle from "@/components/theme-toggle";
+import { ADSENSE_CLIENT, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://monthlywise-eta.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "MonthlyWise | Free Financial Calculators",
     template: "%s | MonthlyWise",
@@ -36,10 +38,13 @@ export const metadata: Metadata = {
     title: "MonthlyWise | Free Financial Calculators",
     description:
       "Free financial tools for mortgages, car loans, budgets, credit cards, and shared expenses.",
-    url: "https://monthlywise-eta.vercel.app",
-    siteName: "MonthlyWise",
+    url: SITE_URL,
+    siteName: SITE_NAME,
     type: "website",
   },
+  ...(ADSENSE_CLIENT && {
+    other: { "google-adsense-account": ADSENSE_CLIENT },
+  }),
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -49,6 +54,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      {ADSENSE_CLIENT ? (
+        <head>
+          <script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+            crossOrigin="anonymous"
+          />
+        </head>
+      ) : null}
       <body className="flex min-h-full flex-col">
         <Script id="monthlywise-theme-init" strategy="beforeInteractive">
           {`
@@ -71,7 +85,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           `}
         </Script>
 
-        {children}
+        <div className="flex-1">{children}</div>
+        <SiteFooter />
         <ThemeToggle />
       </body>
     </html>

@@ -1,546 +1,102 @@
-"use client";
-
-import { useMemo, useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { CalculatorGuide } from "@/components/content-page";
+import BudgetCalculator from "./calculator";
 
-type Mode = "basic" | "advanced";
-type Frequency = "monthly" | "weekly" | "biweekly" | "yearly";
-type Category = "needs" | "wants" | "savings";
-
-type BudgetItem = {
-  id: number;
-  name: string;
-  amount: number;
-  frequency: Frequency;
-  category: Category;
+export const metadata: Metadata = {
+  title: "Household Budget Calculator (50/30/20 Rule)",
+  description:
+    "Free monthly budget calculator. Track income and expenses, see your needs, wants, and savings split, and check your budget against the 50/30/20 rule.",
+  alternates: { canonical: "/calculators/budget" },
 };
 
-const currency = (value: number) =>
-  value.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-const monthlyValue = (amount: number, frequency: Frequency) => {
-  switch (frequency) {
-    case "weekly":
-      return (amount * 52) / 12;
-    case "biweekly":
-      return (amount * 26) / 12;
-    case "yearly":
-      return amount / 12;
-    default:
-      return amount;
-  }
-};
-
-const safeNumber = (value: string) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
-};
-
-const initialExpenses: BudgetItem[] = [
+const faqs = [
   {
-    id: 1,
-    name: "Rent / Mortgage",
-    amount: 1800,
-    frequency: "monthly",
-    category: "needs",
+    q: "What is the 50/30/20 budget rule?",
+    a: "The 50/30/20 rule suggests spending about 50% of your take-home pay on needs, 30% on wants, and 20% on savings and extra debt payments. It is a simple starting point that you can adjust to your situation.",
   },
   {
-    id: 2,
-    name: "Utilities",
-    amount: 250,
-    frequency: "monthly",
-    category: "needs",
+    q: "Should I budget with gross or take-home pay?",
+    a: "Use take-home pay, the amount that actually reaches your bank account after taxes and deductions. That is the money you have available to spend and save each month.",
   },
   {
-    id: 3,
-    name: "Groceries",
-    amount: 600,
-    frequency: "monthly",
-    category: "needs",
+    q: "How big should my emergency fund be?",
+    a: "A common goal is three to six months of essential expenses. If your income is irregular or you are the only earner in your household, aiming for the higher end can provide extra security.",
   },
   {
-    id: 4,
-    name: "Transportation",
-    amount: 450,
-    frequency: "monthly",
-    category: "needs",
-  },
-  {
-    id: 5,
-    name: "Insurance",
-    amount: 250,
-    frequency: "monthly",
-    category: "needs",
-  },
-  {
-    id: 6,
-    name: "Debt Payments",
-    amount: 300,
-    frequency: "monthly",
-    category: "needs",
-  },
-  {
-    id: 7,
-    name: "Dining Out",
-    amount: 250,
-    frequency: "monthly",
-    category: "wants",
-  },
-  {
-    id: 8,
-    name: "Entertainment",
-    amount: 150,
-    frequency: "monthly",
-    category: "wants",
-  },
-  {
-    id: 9,
-    name: "Shopping",
-    amount: 200,
-    frequency: "monthly",
-    category: "wants",
-  },
-  {
-    id: 10,
-    name: "Emergency Savings",
-    amount: 400,
-    frequency: "monthly",
-    category: "savings",
-  },
-  {
-    id: 11,
-    name: "Retirement Savings",
-    amount: 300,
-    frequency: "monthly",
-    category: "savings",
+    q: "What counts as a need versus a want?",
+    a: "Needs are expenses you must pay to live and work, such as housing, utilities, groceries, insurance, transportation, and minimum debt payments. Wants are things you choose, like dining out, entertainment, subscriptions, and shopping.",
   },
 ];
 
-export default function BudgetCalculator() {
-  const [mode, setMode] = useState<Mode>("basic");
-
-  // Basic mode
-  const [income, setIncome] = useState(6000);
-  const [housing, setHousing] = useState(1800);
-  const [transportation, setTransportation] = useState(450);
-  const [groceries, setGroceries] = useState(600);
-  const [utilities, setUtilities] = useState(250);
-  const [debt, setDebt] = useState(300);
-  const [other, setOther] = useState(600);
-  const [savings, setSavings] = useState(700);
-
-  // Advanced mode
-  const [incomeSources, setIncomeSources] = useState<BudgetItem[]>([
-    {
-      id: 100,
-      name: "Primary Salary (take-home)",
-      amount: 5000,
-      frequency: "monthly",
-      category: "needs",
-    },
-    {
-      id: 101,
-      name: "Other Income",
-      amount: 1000,
-      frequency: "monthly",
-      category: "needs",
-    },
-  ]);
-
-  const [expenses, setExpenses] = useState<BudgetItem[]>(initialExpenses);
-  const [nextId, setNextId] = useState(200);
-
-  const results = useMemo(() => {
-    if (mode === "basic") {
-      const needs = housing + transportation + groceries + utilities + debt;
-      const wants = other;
-      const saved = savings;
-      const total = needs + wants + saved;
-
-      return {
-        income,
-        needs,
-        wants,
-        savings: saved,
-        total,
-        remaining: income - total,
-      };
-    }
-
-    const totalIncome = incomeSources.reduce(
-      (sum, item) => sum + monthlyValue(item.amount, item.frequency),
-      0,
-    );
-
-    const totals = {
-      needs: 0,
-      wants: 0,
-      savings: 0,
-    };
-
-    expenses.forEach((item) => {
-      totals[item.category] += monthlyValue(item.amount, item.frequency);
-    });
-
-    const total = totals.needs + totals.wants + totals.savings;
-
-    return {
-      income: totalIncome,
-      needs: totals.needs,
-      wants: totals.wants,
-      savings: totals.savings,
-      total,
-      remaining: totalIncome - total,
-    };
-  }, [
-    mode,
-    income,
-    housing,
-    transportation,
-    groceries,
-    utilities,
-    debt,
-    other,
-    savings,
-    incomeSources,
-    expenses,
-  ]);
-
-  const percentages = {
-    needs: results.income > 0 ? (results.needs / results.income) * 100 : 0,
-    wants: results.income > 0 ? (results.wants / results.income) * 100 : 0,
-    savings: results.income > 0 ? (results.savings / results.income) * 100 : 0,
-  };
-
-  const numberInput = (
-    label: string,
-    value: number,
-    setter: (value: number) => void,
-  ) => (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium">{label}</span>
-      <input
-        type="number"
-        min="0"
-        step="any"
-        value={value}
-        onChange={(event) => setter(safeNumber(event.target.value))}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500"
-      />
-    </label>
-  );
-
-  const updateItem = (
-    list: BudgetItem[],
-    setter: (items: BudgetItem[]) => void,
-    id: number,
-    changes: Partial<BudgetItem>,
-  ) => {
-    setter(
-      list.map((item) => (item.id === id ? { ...item, ...changes } : item)),
-    );
-  };
-
-  const addItem = (kind: "income" | "expense") => {
-    const item: BudgetItem = {
-      id: nextId,
-      name: kind === "income" ? "New Income" : "New Expense",
-      amount: 0,
-      frequency: "monthly",
-      category: "needs",
-    };
-
-    setNextId((current) => current + 1);
-
-    if (kind === "income") {
-      setIncomeSources((current) => [...current, item]);
-    } else {
-      setExpenses((current) => [...current, item]);
-    }
-  };
-
-  const itemEditor = (item: BudgetItem, kind: "income" | "expense") => {
-    const list = kind === "income" ? incomeSources : expenses;
-    const setter = kind === "income" ? setIncomeSources : setExpenses;
-
-    return (
-      <div
-        key={item.id}
-        className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-2"
-      >
-        <label className="block">
-          <span className="mb-1 block text-sm">Name</span>
-          <input
-            type="text"
-            value={item.name}
-            onChange={(event) =>
-              updateItem(list, setter, item.id, {
-                name: event.target.value,
-              })
-            }
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-sm">Amount ($)</span>
-          <input
-            type="number"
-            min="0"
-            step="any"
-            value={item.amount}
-            onChange={(event) =>
-              updateItem(list, setter, item.id, {
-                amount: safeNumber(event.target.value),
-              })
-            }
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-sm">Frequency</span>
-          <select
-            value={item.frequency}
-            onChange={(event) =>
-              updateItem(list, setter, item.id, {
-                frequency: event.target.value as Frequency,
-              })
-            }
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
-          >
-            <option value="monthly">Monthly</option>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Every 2 weeks</option>
-            <option value="yearly">Yearly</option>
-          </select>
-        </label>
-
-        {kind === "expense" && (
-          <label className="block">
-            <span className="mb-1 block text-sm">Category</span>
-            <select
-              value={item.category}
-              onChange={(event) =>
-                updateItem(list, setter, item.id, {
-                  category: event.target.value as Category,
-                })
-              }
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
-            >
-              <option value="needs">Needs</option>
-              <option value="wants">Wants</option>
-              <option value="savings">Savings / Debt Paydown</option>
-            </select>
-          </label>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setter(list.filter((entry) => entry.id !== item.id))}
-          className="text-left text-sm font-medium text-red-600 hover:underline"
-        >
-          Remove
-        </button>
-      </div>
-    );
-  };
-
-  const summaryRow = (label: string, value: number) => (
-    <div className="flex justify-between gap-4 border-b border-slate-100 py-3">
-      <span className="text-slate-600">{label}</span>
-      <span className="font-semibold">{currency(value)}</span>
-    </div>
-  );
-
+export default function BudgetPage() {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <Link href="/" className="font-medium text-blue-700 hover:underline">
-          ← Back to MonthlyWise
-        </Link>
-
-        <h1 className="mt-7 text-3xl font-bold sm:text-4xl">
-          Household Budget Calculator
-        </h1>
-
-        <p className="mt-3 text-slate-600">
-          Plan your monthly income, expenses, and savings with a detailed
-          household budget breakdown.
+    <>
+      <BudgetCalculator />
+      <CalculatorGuide title="How to use the budget calculator" faqs={faqs}>
+        <p>
+          Add each source of monthly take-home income, then list your
+          expenses and assign each one to <strong>Needs</strong>,{" "}
+          <strong>Wants</strong>, or <strong>Savings</strong>. The calculator
+          totals everything, shows how much income is left unallocated, and
+          compares your spending to the popular 50/30/20 guideline so you can
+          quickly spot where your money is going.
         </p>
 
-        <div className="mt-7 inline-flex rounded-xl border bg-white p-1">
-          {(["basic", "advanced"] as Mode[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setMode(item)}
-              className={`rounded-lg px-5 py-2 font-medium capitalize ${
-                mode === item ? "bg-blue-700 text-white" : "text-slate-600"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+        <h3>The 50/30/20 rule explained</h3>
+        <ul>
+          <li>
+            <strong>50% needs:</strong> rent or mortgage, utilities,
+            groceries, insurance, transportation, and minimum debt payments.
+          </li>
+          <li>
+            <strong>30% wants:</strong> dining out, entertainment, shopping,
+            travel, and subscriptions.
+          </li>
+          <li>
+            <strong>20% savings:</strong> emergency fund, retirement
+            contributions, and extra payments toward debt.
+          </li>
+        </ul>
 
-        <div className="mt-8 grid items-start gap-8 lg:grid-cols-2">
-          <section className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
-            {mode === "basic" ? (
-              <>
-                <h2 className="text-xl font-bold">Monthly Budget</h2>
+        <h3>Example</h3>
+        <p>
+          With $4,000 in monthly take-home pay, the 50/30/20 rule suggests
+          about <strong>$2,000</strong> for needs, <strong>$1,200</strong>{" "}
+          for wants, and <strong>$800</strong> for savings and debt payoff. If
+          your rent alone is $1,800, your needs will likely exceed 50%, which
+          is common in high-cost areas. In that case, trimming wants or
+          finding ways to lower fixed costs helps protect your savings goal.
+        </p>
 
-                {numberInput("Monthly take-home income ($)", income, setIncome)}
-                {numberInput("Housing ($)", housing, setHousing)}
-                {numberInput(
-                  "Transportation ($)",
-                  transportation,
-                  setTransportation,
-                )}
-                {numberInput("Groceries ($)", groceries, setGroceries)}
-                {numberInput("Utilities ($)", utilities, setUtilities)}
-                {numberInput("Debt payments ($)", debt, setDebt)}
-                {numberInput("Other expenses ($)", other, setOther)}
-                {numberInput("Monthly savings ($)", savings, setSavings)}
-              </>
-            ) : (
-              <>
-                <h2 className="text-xl font-bold">Income Sources</h2>
-
-                <div className="space-y-4">
-                  {incomeSources.map((item) => itemEditor(item, "income"))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => addItem("income")}
-                  className="w-full rounded-xl border border-blue-700 px-4 py-3 font-semibold text-blue-700 hover:bg-blue-50"
-                >
-                  + Add income source
-                </button>
-
-                <h2 className="border-t border-slate-200 pt-6 text-xl font-bold">
-                  Expenses & Savings
-                </h2>
-
-                <div className="space-y-4">
-                  {expenses.map((item) => itemEditor(item, "expense"))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => addItem("expense")}
-                  className="w-full rounded-xl border border-blue-700 px-4 py-3 font-semibold text-blue-700 hover:bg-blue-50"
-                >
-                  + Add expense or savings goal
-                </button>
-              </>
-            )}
-          </section>
-
-          <section className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold">Your Monthly Budget Summary</h2>
-
-            <p className="mt-6 text-sm text-slate-500">
-              Money remaining after planned spending and savings
-            </p>
-
-            <p
-              className={`mt-1 text-4xl font-extrabold ${
-                results.remaining >= 0 ? "text-green-700" : "text-red-600"
-              }`}
-            >
-              {currency(results.remaining)}
-            </p>
-
-            <p className="mt-2 text-sm text-slate-500">
-              {results.remaining >= 0
-                ? "Your planned budget is within your income."
-                : "Your planned spending and savings exceed your income."}
-            </p>
-
-            <div className="mt-8">
-              {summaryRow("Monthly income", results.income)}
-              {summaryRow("Needs", results.needs)}
-              {summaryRow("Wants", results.wants)}
-              {summaryRow("Savings / planned debt paydown", results.savings)}
-              {summaryRow("Total planned allocation", results.total)}
-              {summaryRow("Unallocated income", results.remaining)}
-            </div>
-
-            <h3 className="mt-8 text-lg font-bold">
-              50/30/20 Budget Comparison
-            </h3>
-
-            <p className="mt-2 text-sm text-slate-600">
-              A common guideline suggests using up to 50% of take-home income
-              for needs, 30% for wants, and around 20% for savings and extra
-              debt payments. Your priorities may differ.
-            </p>
-
-            <div className="mt-6 space-y-5">
-              {(
-                [
-                  ["Needs", percentages.needs, 50, "bg-blue-600"],
-                  ["Wants", percentages.wants, 30, "bg-amber-500"],
-                  ["Savings", percentages.savings, 20, "bg-green-600"],
-                ] as const
-              ).map(([label, actual, target, color]) => (
-                <div key={label}>
-                  <div className="mb-2 flex justify-between gap-3 text-sm">
-                    <span className="font-semibold">{label}</span>
-                    <span>
-                      {actual.toFixed(1)}% / {target}% guideline
-                    </span>
-                  </div>
-
-                  <div className="h-3 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className={`h-full rounded-full ${color}`}
-                      style={{
-                        width: `${Math.min(100, actual)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 rounded-xl bg-slate-50 p-5">
-              <h3 className="font-bold">Budget Health</h3>
-
-              {results.income <= 0 ? (
-                <p className="mt-2 text-sm text-slate-600">
-                  Enter your income to see your budget analysis.
-                </p>
-              ) : results.remaining < 0 ? (
-                <p className="mt-2 text-sm text-red-700">
-                  Your planned budget has a deficit of{" "}
-                  <strong>{currency(-results.remaining)}</strong> per month.
-                  Review your expenses or savings allocations to balance it.
-                </p>
-              ) : (
-                <p className="mt-2 text-sm text-green-700">
-                  You have <strong>{currency(results.remaining)}</strong> left
-                  to allocate each month.
-                </p>
-              )}
-            </div>
-
-            <p className="mt-7 text-xs leading-5 text-slate-500">
-              Calculations use average monthly equivalents: weekly amounts × 52
-              ÷ 12, biweekly amounts × 26 ÷ 12, and yearly amounts ÷ 12. Use
-              take-home income for a more realistic budget. Savings are treated
-              as planned allocations, not spending.
-            </p>
-          </section>
-        </div>
-      </div>
-    </main>
+        <h3>Steps to build a budget that works</h3>
+        <ol>
+          <li>
+            <strong>Track one month of spending</strong> using bank and card
+            statements so your numbers are realistic.
+          </li>
+          <li>
+            <strong>Pay yourself first</strong> by treating savings as a fixed
+            expense rather than whatever is left over.
+          </li>
+          <li>
+            <strong>Plan for irregular costs</strong> such as car repairs,
+            gifts, and annual subscriptions by setting aside a little each
+            month.
+          </li>
+          <li>
+            <strong>Review monthly</strong> and adjust. A budget is a plan you
+            update as life changes.
+          </li>
+        </ol>
+        <p>
+          Sharing costs with roommates or a partner? Use{" "}
+          <Link href="/groups/new">Split Expenses</Link> to track who owes
+          what. Carrying card balances? See your payoff timeline with the{" "}
+          <Link href="/calculators/credit-card">credit card payoff calculator</Link>
+          .
+        </p>
+      </CalculatorGuide>
+    </>
   );
 }

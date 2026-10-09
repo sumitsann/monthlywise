@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 const tools = [
   {
@@ -63,12 +68,18 @@ export default function Home() {
             >
               Calculators
             </a>
-            <a
-              href="#about"
+            <Link
+              href="/about"
               className="hover:text-blue-700 dark:hover:text-blue-400"
             >
               About
-            </a>
+            </Link>
+            <Link
+              href="/contact"
+              className="hover:text-blue-700 dark:hover:text-blue-400"
+            >
+              Contact
+            </Link>
           </nav>
         </div>
       </header>
@@ -152,11 +163,6 @@ export default function Home() {
           and split shared expenses without complicated spreadsheets.
         </p>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white px-6 py-8 text-center text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-        © 2026 MonthlyWise. Free financial calculators.
-      </footer>
     </main>
   );
 }

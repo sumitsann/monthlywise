@@ -1,348 +1,101 @@
-"use client";
-
-import { useMemo, useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { CalculatorGuide } from "@/components/content-page";
+import PersonalLoanCalculator from "./calculator";
 
-type Mode = "basic" | "advanced";
-type FeeMethod = "deducted" | "financed" | "upfront";
+export const metadata: Metadata = {
+  title: "Personal Loan Calculator with Origination Fees",
+  description:
+    "Free personal loan calculator. Estimate monthly payments, total interest, and the true cost of origination fees, with an amortization schedule and extra-payment options.",
+  alternates: { canonical: "/calculators/personal-loan" },
+};
 
-const money = (value: number) =>
-  value.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+const faqs = [
+  {
+    q: "What is an origination fee?",
+    a: "An origination fee is a one-time charge some lenders take for processing a loan, typically 1% to 10% of the loan amount. It is often deducted from the money you receive, so you may get less cash than the amount you borrow.",
+  },
+  {
+    q: "What is the difference between interest rate and APR?",
+    a: "The interest rate is the cost of borrowing the principal. APR includes the interest rate plus certain fees, such as origination fees, expressed as a yearly rate. APR is usually the better number for comparing loan offers.",
+  },
+  {
+    q: "Can I pay off a personal loan early?",
+    a: "Most personal loans allow early payoff without a penalty, which saves interest. Check your loan agreement for any prepayment penalty before making large extra payments.",
+  },
+  {
+    q: "What credit score do I need for a personal loan?",
+    a: "Requirements vary by lender. Borrowers with good to excellent credit generally qualify for the lowest rates, while lower scores may mean higher rates or fees.",
+  },
+];
 
-function payment(principal: number, apr: number, months: number) {
-  if (principal <= 0 || months <= 0) return 0;
-  const rate = apr / 100 / 12;
-  if (rate === 0) return principal / months;
-  return (principal * rate) / (1 - Math.pow(1 + rate, -months));
-}
-
-function amortize(
-  principal: number,
-  apr: number,
-  months: number,
-  extra: number,
-) {
-  const regular = payment(principal, apr, months);
-  const rate = apr / 100 / 12;
-  let balance = principal;
-  let totalInterest = 0;
-
-  const rows: {
-    month: number;
-    payment: number;
-    principal: number;
-    interest: number;
-    balance: number;
-  }[] = [];
-
-  for (let month = 1; month <= months && balance > 0.000001; month++) {
-    const interest = balance * rate;
-    const principalPaid = Math.min(
-      balance,
-      Math.max(0, regular - interest) + extra,
-    );
-    const actualPayment = principalPaid + interest;
-
-    balance = Math.max(0, balance - principalPaid);
-    totalInterest += interest;
-
-    rows.push({
-      month,
-      payment: actualPayment,
-      principal: principalPaid,
-      interest,
-      balance,
-    });
-  }
-
-  return {
-    regular,
-    rows,
-    totalInterest,
-    payoffMonths: rows.length,
-    totalPayments: principal + totalInterest,
-  };
-}
-
-export default function PersonalLoanCalculator() {
-  const [mode, setMode] = useState<Mode>("basic");
-  const [loanAmount, setLoanAmount] = useState(15000);
-  const [apr, setApr] = useState(10);
-  const [termMonths, setTermMonths] = useState(48);
-
-  const [feePercent, setFeePercent] = useState(3);
-  const [fixedFee, setFixedFee] = useState(0);
-  const [feeMethod, setFeeMethod] = useState<FeeMethod>("deducted");
-  const [extraPayment, setExtraPayment] = useState(0);
-  const [showSchedule, setShowSchedule] = useState(false);
-
-  const results = useMemo(() => {
-    const advanced = mode === "advanced";
-    const fee = advanced ? (loanAmount * feePercent) / 100 + fixedFee : 0;
-
-    const financedPrincipal =
-      advanced && feeMethod === "financed" ? loanAmount + fee : loanAmount;
-
-    const cashReceived =
-      advanced && feeMethod === "deducted" ? loanAmount - fee : loanAmount;
-
-    const upfrontFee = advanced && feeMethod === "upfront" ? fee : 0;
-
-    const months = Math.max(1, Math.round(termMonths));
-
-    const standard = amortize(financedPrincipal, apr, months, 0);
-
-    const accelerated = amortize(
-      financedPrincipal,
-      apr,
-      months,
-      advanced ? extraPayment : 0,
-    );
-
-    // Borrowing cost relative to the money the borrower
-    // actually receives, including any upfront fee.
-    const borrowingCost = accelerated.totalPayments + upfrontFee - cashReceived;
-
-    return {
-      fee,
-      financedPrincipal,
-      cashReceived,
-      upfrontFee,
-      standard,
-      accelerated,
-      borrowingCost,
-      interestSaved: Math.max(
-        0,
-        standard.totalInterest - accelerated.totalInterest,
-      ),
-      monthsSaved: Math.max(
-        0,
-        standard.payoffMonths - accelerated.payoffMonths,
-      ),
-    };
-  }, [
-    mode,
-    loanAmount,
-    apr,
-    termMonths,
-    feePercent,
-    fixedFee,
-    feeMethod,
-    extraPayment,
-  ]);
-
-  const input = (
-    label: string,
-    value: number,
-    setter: (value: number) => void,
-    step = "any",
-  ) => (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium">{label}</span>
-      <input
-        type="number"
-        min="0"
-        step={step}
-        value={value}
-        onChange={(event) => {
-          const parsed = Number(event.target.value);
-          setter(Number.isFinite(parsed) ? Math.max(0, parsed) : 0);
-        }}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500"
-      />
-    </label>
-  );
-
-  const row = (label: string, value: number) => (
-    <div className="flex justify-between gap-4 border-b border-slate-100 py-3">
-      <span className="text-slate-600">{label}</span>
-      <span className="font-semibold">{money(value)}</span>
-    </div>
-  );
-
+export default function PersonalLoanPage() {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <Link href="/" className="font-medium text-blue-700 hover:underline">
-          ← Back to MonthlyWise
-        </Link>
-
-        <h1 className="mt-7 text-3xl font-bold sm:text-4xl">
-          Personal Loan Calculator
-        </h1>
-
-        <p className="mt-3 text-slate-600">
-          Calculate monthly loan payments, origination fees, total borrowing
-          costs, and early payoff savings.
+    <>
+      <PersonalLoanCalculator />
+      <CalculatorGuide
+        title="How to use the personal loan calculator"
+        faqs={faqs}
+      >
+        <p>
+          Enter the loan amount, interest rate, and term in months. If your
+          lender charges an origination fee or a fixed fee, add it to see how
+          much cash you will actually receive and what the loan really costs.
+          You can also add an extra monthly principal payment to see how much
+          sooner you would be debt-free.
         </p>
 
-        <div className="mt-7 inline-flex rounded-xl border bg-white p-1">
-          {(["basic", "advanced"] as Mode[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setMode(item)}
-              className={`rounded-lg px-5 py-2 font-medium capitalize ${
-                mode === item ? "bg-blue-700 text-white" : "text-slate-600"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+        <h3>How personal loan payments work</h3>
+        <p>
+          Personal loans are usually fixed-rate installment loans: you borrow
+          a lump sum and repay it in equal monthly payments over a set term,
+          commonly 24 to 60 months. Each payment covers that month&apos;s
+          interest first, and the rest reduces your balance. The payment is
+          calculated with the standard amortization formula{" "}
+          <code>M = P × r(1 + r)ⁿ ÷ [(1 + r)ⁿ − 1]</code>, where P is the
+          amount financed, r is the monthly rate, and n is the number of
+          payments.
+        </p>
 
-        <div className="mt-8 grid items-start gap-8 lg:grid-cols-2">
-          <section className="space-y-5 rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold">Loan Details</h2>
+        <h3>Example</h3>
+        <p>
+          A $10,000 loan at 12% for 36 months has a payment of about{" "}
+          <strong>$332 per month</strong> and costs roughly $1,960 in
+          interest. If the lender charges a 5% origination fee deducted from
+          the loan, you would receive only <strong>$9,500</strong> while still
+          repaying the full $10,000 plus interest, making your real borrowing
+          cost closer to $2,460.
+        </p>
 
-            {input("Loan amount ($)", loanAmount, setLoanAmount)}
-            {input("Annual interest rate (%)", apr, setApr)}
-            {input("Loan term (months)", termMonths, setTermMonths, "1")}
+        <h3>Common uses for personal loans</h3>
+        <ul>
+          <li>
+            <strong>Debt consolidation:</strong> replacing high-interest
+            credit card balances with one fixed payment at a lower rate.
+          </li>
+          <li>
+            <strong>Home repairs or improvements</strong> without using home
+            equity.
+          </li>
+          <li>
+            <strong>Large or unexpected expenses</strong> such as medical
+            bills or moving costs.
+          </li>
+        </ul>
 
-            {mode === "advanced" && (
-              <div className="space-y-5 border-t border-slate-200 pt-5">
-                <h3 className="text-lg font-bold">Origination Fees</h3>
-
-                {input("Origination fee (%)", feePercent, setFeePercent)}
-                {input("Additional fixed fee ($)", fixedFee, setFixedFee)}
-
-                <label className="block">
-                  <span className="mb-1 block text-sm font-medium">
-                    How is the fee paid?
-                  </span>
-                  <select
-                    value={feeMethod}
-                    onChange={(event) =>
-                      setFeeMethod(event.target.value as FeeMethod)
-                    }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
-                  >
-                    <option value="deducted">
-                      Deducted from loan proceeds
-                    </option>
-                    <option value="financed">Added to loan principal</option>
-                    <option value="upfront">Paid separately upfront</option>
-                  </select>
-                </label>
-
-                {input(
-                  "Extra monthly principal payment ($)",
-                  extraPayment,
-                  setExtraPayment,
-                )}
-
-                {feeMethod === "deducted" && results.cashReceived < 0 && (
-                  <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-                    Your fees exceed the loan proceeds. Review these inputs.
-                  </p>
-                )}
-              </div>
-            )}
-          </section>
-
-          <section className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold">Estimated Monthly Payment</h2>
-
-            <p className="mt-6 text-4xl font-extrabold text-blue-700">
-              {money(results.standard.regular)}
-            </p>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Scheduled payment, excluding optional extra principal.
-            </p>
-
-            <div className="mt-8">
-              {row("Requested loan amount", loanAmount)}
-              {row("Origination and fixed fees", results.fee)}
-              {row("Amount financed", results.financedPrincipal)}
-              {row("Cash received", results.cashReceived)}
-              {row("Fee paid upfront", results.upfrontFee)}
-              {row("Total loan interest", results.accelerated.totalInterest)}
-              {row("Total loan payments", results.accelerated.totalPayments)}
-              {row("Estimated borrowing cost", results.borrowingCost)}
-            </div>
-
-            {mode === "advanced" && extraPayment > 0 && (
-              <div className="mt-6 rounded-xl bg-blue-50 p-5">
-                <h3 className="font-bold text-blue-900">
-                  Extra Payment Benefits
-                </h3>
-                <p className="mt-3 text-sm">
-                  Payment including extra principal
-                </p>
-                <p className="text-2xl font-bold text-blue-700">
-                  {money(results.standard.regular + extraPayment)}
-                </p>
-                <p className="mt-3 text-sm">
-                  Interest saved:{" "}
-                  <strong>{money(results.interestSaved)}</strong>
-                </p>
-                <p className="mt-1 text-sm">
-                  Months saved: <strong>{results.monthsSaved}</strong>
-                </p>
-              </div>
-            )}
-
-            <div className="mt-6 rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Estimated payoff time</p>
-              <p className="mt-1 text-xl font-bold">
-                {Math.floor(results.accelerated.payoffMonths / 12)} years{" "}
-                {results.accelerated.payoffMonths % 12} months
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowSchedule(!showSchedule)}
-              className="mt-7 w-full rounded-xl border border-blue-700 px-4 py-3 font-semibold text-blue-700 hover:bg-blue-50"
-            >
-              {showSchedule
-                ? "Hide amortization schedule"
-                : "View amortization schedule"}
-            </button>
-
-            {showSchedule && (
-              <div className="mt-5 max-h-96 overflow-auto rounded-xl border">
-                <table className="w-full min-w-[570px] text-left text-sm">
-                  <thead className="sticky top-0 bg-slate-100">
-                    <tr>
-                      <th className="p-3">Month</th>
-                      <th className="p-3">Payment</th>
-                      <th className="p-3">Principal</th>
-                      <th className="p-3">Interest</th>
-                      <th className="p-3">Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.accelerated.rows.map((item) => (
-                      <tr key={item.month} className="border-t">
-                        <td className="p-3">{item.month}</td>
-                        <td className="p-3">{money(item.payment)}</td>
-                        <td className="p-3">{money(item.principal)}</td>
-                        <td className="p-3">{money(item.interest)}</td>
-                        <td className="p-3">{money(item.balance)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <p className="mt-7 text-xs leading-5 text-slate-500">
-              Estimates assume a fixed interest rate, monthly compounding, and
-              payments made on schedule. Fees are modeled separately from the
-              entered interest rate. The displayed borrowing cost is not a
-              legally calculated Truth in Lending APR. Actual lender terms may
-              differ.
-            </p>
-          </section>
-        </div>
-      </div>
-    </main>
+        <h3>Before you borrow</h3>
+        <ul>
+          <li>Compare APRs from several lenders, not just interest rates.</li>
+          <li>Choose the shortest term with a payment you can comfortably afford.</li>
+          <li>Make sure the new payment fits your monthly budget.</li>
+        </ul>
+        <p>
+          Consolidating credit cards? See how long payoff would take on your
+          own with our{" "}
+          <Link href="/calculators/credit-card">credit card payoff calculator</Link>
+          .
+        </p>
+      </CalculatorGuide>
+    </>
   );
 }
