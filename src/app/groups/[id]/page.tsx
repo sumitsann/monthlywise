@@ -24,6 +24,22 @@ type Expense = {
   created_at: string;
 };
 
+type MemberBalance = {
+  memberId: string;
+  name: string;
+  paidCents: number;
+  owedCents: number;
+  balanceCents: number;
+};
+
+type Settlement = {
+  fromId: string;
+  fromName: string;
+  toId: string;
+  toName: string;
+  amountCents: number;
+};
+
 function formatMoney(cents: number) {
   return (cents / 100).toLocaleString("en-US", {
     style: "currency",
@@ -63,6 +79,12 @@ function SharedGroupContent() {
   const [memberError, setMemberError] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
   const [copied, setCopied] = useState(false);
+
+  const [balances, setBalances] = useState<MemberBalance[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [totalExpensesCents, setTotalExpensesCents] = useState(0);
+  const [balancesLoading, setBalancesLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState("");
 
   const loadMembers = useCallback(
     async (token: string) => {
@@ -132,6 +154,44 @@ function SharedGroupContent() {
     [id],
   );
 
+  const loadBalances = useCallback(
+    async (token: string) => {
+      setBalancesLoading(true);
+      setBalanceError("");
+
+      try {
+        const response = await fetch(
+          `/api/groups/${encodeURIComponent(id)}/balances`,
+          {
+            headers: {
+              "x-group-token": token,
+            },
+            cache: "no-store",
+          },
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error ?? "Unable to calculate balances.");
+        }
+
+        setBalances(result.balances ?? []);
+        setSettlements(result.settlements ?? []);
+        setTotalExpensesCents(result.totalExpensesCents ?? 0);
+      } catch (caught) {
+        setBalanceError(
+          caught instanceof Error
+            ? caught.message
+            : "Unable to calculate balances.",
+        );
+      } finally {
+        setBalancesLoading(false);
+      }
+    },
+    [id],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -165,6 +225,7 @@ function SharedGroupContent() {
           setGroup(result as Group);
           await loadMembers(token);
           await loadExpenses(token);
+          await loadBalances(token);
         }
       } catch (caught) {
         if (!cancelled) {
@@ -184,7 +245,7 @@ function SharedGroupContent() {
     return () => {
       cancelled = true;
     };
-  }, [id, loadMembers, loadExpenses]);
+  }, [id, loadMembers, loadExpenses, loadBalances]);
 
   async function addMember(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -228,6 +289,7 @@ function SharedGroupContent() {
       setNewMemberName("");
 
       await loadMembers(token);
+      await loadBalances(token);
     } catch (caught) {
       setMemberError(
         caught instanceof Error ? caught.message : "Unable to add member.",
@@ -309,6 +371,7 @@ function SharedGroupContent() {
       setExpenseAmount("");
 
       await loadExpenses(token);
+      await loadBalances(token);
     } catch (caught) {
       setExpenseError(
         caught instanceof Error ? caught.message : "Unable to save expense.",
@@ -574,6 +637,124 @@ function SharedGroupContent() {
                   </ul>
                 )}
               </div>
+            </section>
+
+            <section className="rounded-2xl border bg-white p-7 shadow-sm">
+              <h2 className="text-2xl font-bold">Balances &amp; Settlements</h2>
+
+              <p className="mt-2 text-slate-600">
+                See who should receive money and who owes money.
+              </p>
+
+              {balanceError && (
+                <p
+                  role="alert"
+                  className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                >
+                  {balanceError}
+                </p>
+              )}
+
+              {balancesLoading ? (
+                <p className="mt-5 text-slate-500">Calculating balances...</p>
+              ) : (
+                <>
+                  <div className="mt-6 rounded-xl bg-slate-50 p-4">
+                    <p className="text-sm text-slate-500">
+                      Total Group Expenses
+                    </p>
+                    <p className="mt-1 text-3xl font-bold">
+                      {formatMoney(totalExpensesCents)}
+                    </p>
+                  </div>
+
+                  <h3 className="mt-7 text-lg font-bold">Member Balances</h3>
+
+                  {balances.length === 0 ? (
+                    <p className="mt-3 text-slate-500">
+                      Add members to see balances.
+                    </p>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      {balances.map((balance) => (
+                        <div
+                          key={balance.memberId}
+                          className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4"
+                        >
+                          <div>
+                            <p className="font-semibold">{balance.name}</p>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                              Paid {formatMoney(balance.paidCents)}
+                              {" · "}
+                              Share {formatMoney(balance.owedCents)}
+                            </p>
+                          </div>
+
+                          <div className="text-right">
+                            <p
+                              className={`text-lg font-bold ${
+                                balance.balanceCents > 0
+                                  ? "text-green-700"
+                                  : balance.balanceCents < 0
+                                    ? "text-red-700"
+                                    : "text-slate-700"
+                              }`}
+                            >
+                              {balance.balanceCents > 0 ? "+" : ""}
+                              {formatMoney(balance.balanceCents)}
+                            </p>
+
+                            <p className="text-xs text-slate-500">
+                              {balance.balanceCents > 0
+                                ? "Gets back"
+                                : balance.balanceCents < 0
+                                  ? "Owes"
+                                  : "Settled"}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <h3 className="mt-8 text-lg font-bold">
+                    Suggested Settlements
+                  </h3>
+
+                  {settlements.length === 0 ? (
+                    <p className="mt-3 text-slate-500">
+                      No payments needed right now.
+                    </p>
+                  ) : (
+                    <ul className="mt-4 space-y-3">
+                      {settlements.map((settlement, index) => (
+                        <li
+                          key={`${settlement.fromId}-${settlement.toId}-${index}`}
+                          className="rounded-xl border border-blue-100 bg-blue-50 p-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="font-medium text-slate-900">
+                              {settlement.fromName}
+                              {" → "}
+                              {settlement.toName}
+                            </p>
+
+                            <p className="font-bold text-blue-800">
+                              {formatMoney(settlement.amountCents)}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <p className="mt-5 text-xs text-slate-500">
+                    These are suggested payments only. No money is transferred
+                    automatically.
+                  </p>
+                </>
+              )}
             </section>
           </div>
         ) : null}
