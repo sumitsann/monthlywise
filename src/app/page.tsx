@@ -21,7 +21,7 @@ const tools = [
     title: "Credit Card Payoff",
     description: "Find out how long it will take to pay off your credit card.",
     href: "/calculators/credit-card",
-    available: false,
+    available: true,
   },
   {
     icon: "💵",
