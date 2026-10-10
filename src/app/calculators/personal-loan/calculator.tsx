@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import NumberInput from "@/components/number-input";
 
 type Mode = "basic" | "advanced";
 type FeeMethod = "deducted" | "financed" | "upfront";
@@ -143,13 +144,12 @@ export default function PersonalLoanCalculator() {
   ) => (
     <label className="block">
       <span className="mb-1 block text-sm font-medium">{label}</span>
-      <input
-        type="number"
+      <NumberInput
         min="0"
         step={step}
         value={value}
-        onChange={(event) => {
-          const parsed = Number(event.target.value);
+        onValueChange={(raw) => {
+          const parsed = Number(raw);
           setter(Number.isFinite(parsed) ? Math.max(0, parsed) : 0);
         }}
         className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500"
