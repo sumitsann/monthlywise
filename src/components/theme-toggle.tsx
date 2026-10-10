@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { MoonIcon, SunIcon } from "@/components/icons";
 
 type Theme = "light" | "dark";
 
@@ -56,9 +57,19 @@ export default function ThemeToggle() {
       aria-label={
         theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
       }
-      className="fixed bottom-5 right-5 top-auto z-50 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-lg transition hover:scale-105 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+      className="fixed bottom-5 right-5 top-auto z-50 inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-lg transition hover:scale-105 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
     >
-      {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+      {theme === "dark" ? (
+        <>
+          <SunIcon className="h-4 w-4" />
+          Light
+        </>
+      ) : (
+        <>
+          <MoonIcon className="h-4 w-4" />
+          Dark
+        </>
+      )}
     </button>
   );
 }
