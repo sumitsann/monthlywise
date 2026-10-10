@@ -5,7 +5,7 @@ export const CONTACT_EMAIL = "sumit.o4172@gmail.com";
 // AdSense publisher ID; drives the AdSense script, verification meta tag,
 // and /ads.txt. NEXT_PUBLIC_ADSENSE_CLIENT can override it.
 export const ADSENSE_CLIENT =
-  process.env.NEXT_PUBLIC_ADSENSE_CLIENT || "ca-pub-9093422774202580";
+  process.env.NEXT_PUBLIC_ADSENSE_CLIENT || "ca-pub-5195789966969907";
 
 export const LAST_UPDATED = "October 9, 2026";
 
