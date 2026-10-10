@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -95,6 +95,8 @@ function SharedGroupContent() {
   const [splitMode, setSplitMode] = useState<"equal" | "custom">("equal");
 
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  // Members seen so far, so only newly added ones get auto-selected.
+  const knownMemberIdsRef = useRef<Set<string>>(new Set());
 
   const [customShares, setCustomShares] = useState<Record<string, string>>({});
 
@@ -142,16 +144,24 @@ function SharedGroupContent() {
 
         setMembers(loadedMembers);
 
-        // Include newly added members by default, but preserve
-        // any selections the user already made.
-        setSelectedMemberIds((current) => {
-          if (current.length === 0) {
-            return loadedMembers.map((member) => member.id);
-          }
+        // Select every member by default, including newly added ones,
+        // but keep anyone the user has unchecked unchecked.
+        const knownIds = knownMemberIdsRef.current;
+        const newIds = loadedMembers
+          .map((member) => member.id)
+          .filter((memberId) => !knownIds.has(memberId));
 
+        knownMemberIdsRef.current = new Set(
+          loadedMembers.map((member) => member.id),
+        );
+
+        setSelectedMemberIds((current) => {
           const validIds = new Set(loadedMembers.map((member) => member.id));
 
-          return current.filter((memberId) => validIds.has(memberId));
+          return [
+            ...current.filter((memberId) => validIds.has(memberId)),
+            ...newIds.filter((memberId) => !current.includes(memberId)),
+          ];
         });
       } catch (caught) {
         setMemberError(
