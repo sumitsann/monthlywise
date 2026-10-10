@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash, timingSafeEqual } from "node:crypto";
+import {
+  GROUP_LINK_LIFETIME_DAYS,
+  getGroupLinkExpiry,
+  isGroupLinkExpired,
+} from "@/lib/group-link";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 type RouteContext = {
@@ -64,11 +69,25 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const expiresAt = getGroupLinkExpiry(data.created_at);
+
+    if (isGroupLinkExpired(data.created_at)) {
+      return NextResponse.json(
+        {
+          error:
+            `This private link expired on ${expiresAt.toLocaleDateString("en-US", { dateStyle: "long", timeZone: "UTC" })}. ` +
+            `Group links are available for ${GROUP_LINK_LIFETIME_DAYS} days.`,
+        },
+        { status: 410, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     return NextResponse.json(
       {
         id: data.id,
         name: data.name,
         createdAt: data.created_at,
+        expiresAt: expiresAt.toISOString(),
       },
       {
         headers: {

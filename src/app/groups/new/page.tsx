@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { GROUP_LINK_LIFETIME_DAYS } from "@/lib/group-link";
 
 export default function NewGroupPage() {
   const router = useRouter();
@@ -109,6 +110,12 @@ export default function NewGroupPage() {
           <p className="mt-6 text-xs leading-5 text-slate-500">
             Anyone who receives your private group link will be able to access
             the group. Only share it with people you trust.
+          </p>
+
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            Group links are available for {GROUP_LINK_LIFETIME_DAYS} days.
+            After that, the group and its expenses can no longer be opened, so
+            settle up before the link expires.
           </p>
         </div>
       </div>

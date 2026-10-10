@@ -3,11 +3,16 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import {
+  GROUP_LINK_LIFETIME_DAYS,
+  getGroupLinkDaysLeft,
+} from "@/lib/group-link";
 
 type Group = {
   id: string;
   name: string;
   createdAt: string;
+  expiresAt: string;
 };
 
 type Member = {
@@ -51,6 +56,12 @@ function formatMoney(cents: number) {
   });
 }
 
+function daysLeftLabel(createdAt: string) {
+  const days = getGroupLinkDaysLeft(createdAt);
+
+  return days === 1 ? "1 day left" : `${days} days left`;
+}
+
 function getPrivateToken() {
   const fragment = window.location.hash;
 
@@ -90,6 +101,9 @@ function SharedGroupContent() {
   const [loading, setLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(false);
   const [savingMember, setSavingMember] = useState(false);
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(
+    null,
+  );
 
   const [error, setError] = useState("");
   const [memberError, setMemberError] = useState("");
@@ -326,6 +340,72 @@ function SharedGroupContent() {
       );
     } finally {
       setSavingMember(false);
+    }
+  }
+
+  function isMemberInExpenses(memberId: string) {
+    return expenses.some(
+      (expense) =>
+        expense.paid_by === memberId ||
+        expense.shares.some((share) => share.memberId === memberId),
+    );
+  }
+
+  async function deleteMember(memberId: string) {
+    const member = members.find((item) => item.id === memberId);
+
+    if (!member || deletingMemberId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Remove "${member.name}" from this group?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const token = getPrivateToken();
+
+    if (!token) {
+      setMemberError("The private token is missing from this link.");
+      return;
+    }
+
+    setDeletingMemberId(memberId);
+    setMemberError("");
+
+    try {
+      const response = await fetch(
+        `/api/groups/${encodeURIComponent(id)}/members/${encodeURIComponent(memberId)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "x-group-token": token,
+          },
+          cache: "no-store",
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "Unable to delete member.");
+      }
+
+      if (expensePaidBy === memberId) {
+        setExpensePaidBy("");
+      }
+
+      await loadMembers(token);
+      await loadBalances(token);
+    } catch (caught) {
+      setMemberError(
+        caught instanceof Error ? caught.message : "Unable to delete member.",
+      );
+    } finally {
+      setDeletingMemberId(null);
     }
   }
 
@@ -790,6 +870,19 @@ function SharedGroupContent() {
               <p className="mt-3 text-xs text-slate-500">
                 Anyone with this link can access the group. Keep it private.
               </p>
+
+              <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                This link expires on{" "}
+                <strong>
+                  {new Date(group.expiresAt).toLocaleString(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </strong>{" "}
+                ({daysLeftLabel(group.createdAt)}). Group links are available
+                for {GROUP_LINK_LIFETIME_DAYS} days after the group is created,
+                then the group can no longer be opened.
+              </p>
             </section>
 
             <section className="rounded-2xl border bg-white p-7 shadow-sm">
@@ -844,19 +937,49 @@ function SharedGroupContent() {
                   </p>
                 ) : (
                   <ul className="mt-3 divide-y divide-slate-200 rounded-xl border border-slate-200">
-                    {members.map((member) => (
-                      <li
-                        key={member.id}
-                        className="flex items-center gap-3 px-4 py-3"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
-                          {member.name.charAt(0).toUpperCase()}
-                        </span>
+                    {members.map((member) => {
+                      const inExpenses = isMemberInExpenses(member.id);
 
-                        <span className="font-medium">{member.name}</span>
-                      </li>
-                    ))}
+                      return (
+                        <li
+                          key={member.id}
+                          className="flex items-center gap-3 px-4 py-3"
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
+                            {member.name.charAt(0).toUpperCase()}
+                          </span>
+
+                          <span className="min-w-0 flex-1 truncate font-medium">
+                            {member.name}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => deleteMember(member.id)}
+                            disabled={deletingMemberId !== null || inExpenses}
+                            title={
+                              inExpenses
+                                ? "Edit or delete this member's expenses first."
+                                : undefined
+                            }
+                            aria-label={`Delete ${member.name}`}
+                            className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {deletingMemberId === member.id
+                              ? "Deleting..."
+                              : "Delete"}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
+                )}
+
+                {members.some((member) => isMemberInExpenses(member.id)) && (
+                  <p className="mt-2 text-sm text-slate-500">
+                    Members who paid for or share an expense can&apos;t be
+                    deleted until those expenses are edited or removed.
+                  </p>
                 )}
               </div>
             </section>

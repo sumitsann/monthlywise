@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash, timingSafeEqual } from "node:crypto";
+import { isGroupLinkExpired } from "@/lib/group-link";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 const uuidPattern =
@@ -22,7 +23,7 @@ export async function verifyGroupAccess(
 
   const { data, error } = await supabase
     .from("expense_groups")
-    .select("access_token_hash")
+    .select("access_token_hash, created_at")
     .eq("id", groupId)
     .maybeSingle();
 
@@ -30,7 +31,7 @@ export async function verifyGroupAccess(
     throw new Error("Unable to verify group access.");
   }
 
-  if (!data) {
+  if (!data || isGroupLinkExpired(data.created_at)) {
     return false;
   }
 
