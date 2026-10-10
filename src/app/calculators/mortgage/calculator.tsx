@@ -5,6 +5,133 @@ import NumberInput from "@/components/number-input";
 
 type Mode = "basic" | "advanced";
 type DownMode = "dollars" | "percent";
+type LoanType = "conventional" | "fha" | "va" | "usda";
+
+const loanTypeLabels: Record<LoanType, string> = {
+  conventional: "Conventional",
+  fha: "FHA",
+  va: "VA",
+  usda: "USDA",
+};
+
+const loanTypeOrder: LoanType[] = ["conventional", "fha", "va", "usda"];
+
+// Typical published program terms; lenders and agencies update these.
+const loanTypeDetails: Record<
+  LoanType,
+  {
+    minDown: string;
+    insurance: string;
+    upfrontFee: string;
+    bestFor: string;
+  }
+> = {
+  conventional: {
+    minDown: "3% (first-time buyers) to 5%",
+    insurance:
+      "PMI only if you put less than 20% down. It can be removed once you reach 20% equity.",
+    upfrontFee: "None",
+    bestFor: "Buyers with good credit (about 620+) and steady income.",
+  },
+  fha: {
+    minDown: "3.5% with a 580+ credit score (10% with 500–579)",
+    insurance:
+      "Annual MIP of about 0.15%–0.55% of the loan. It lasts for the life of the loan with less than 10% down, or 11 years with 10%+ down.",
+    upfrontFee: "1.75% upfront MIP, usually added to the loan",
+    bestFor: "Buyers with lower credit scores or a small down payment.",
+  },
+  va: {
+    minDown: "0%",
+    insurance: "None. VA loans have no monthly mortgage insurance.",
+    upfrontFee:
+      "Funding fee of 1.25%–3.3%, usually added to the loan. Waived for many veterans with a service-connected disability.",
+    bestFor: "Eligible veterans, active-duty service members, and some surviving spouses.",
+  },
+  usda: {
+    minDown: "0%",
+    insurance: "Annual guarantee fee of 0.35% of the loan.",
+    upfrontFee: "1% guarantee fee, usually added to the loan",
+    bestFor:
+      "Low- to moderate-income buyers in eligible rural and suburban areas.",
+  },
+};
+
+type LoanCosts = {
+  upfrontFee: number;
+  upfrontFeeRate: number;
+  monthlyInsurance: number;
+  insuranceLabel: string;
+};
+
+function loanCosts(
+  type: LoanType,
+  baseLoan: number,
+  price: number,
+  years: number,
+  manualPmi: number,
+  vaUsedBefore: boolean,
+  vaExempt: boolean,
+): LoanCosts {
+  const ltv = price > 0 ? (baseLoan / price) * 100 : 0;
+  const downPercent = 100 - ltv;
+
+  if (type === "fha") {
+    const annualMip =
+      years > 15 ? (ltv > 95 ? 0.55 : 0.5) : ltv > 90 ? 0.4 : 0.15;
+
+    return {
+      upfrontFee: baseLoan * 0.0175,
+      upfrontFeeRate: 1.75,
+      monthlyInsurance: (baseLoan * annualMip) / 100 / 12,
+      insuranceLabel: `FHA MIP (${annualMip}%/yr)`,
+    };
+  }
+
+  if (type === "va") {
+    const feeRate = vaExempt
+      ? 0
+      : downPercent < 5
+        ? vaUsedBefore
+          ? 3.3
+          : 2.15
+        : downPercent < 10
+          ? 1.5
+          : 1.25;
+
+    return {
+      upfrontFee: (baseLoan * feeRate) / 100,
+      upfrontFeeRate: feeRate,
+      monthlyInsurance: 0,
+      insuranceLabel: "Mortgage insurance",
+    };
+  }
+
+  if (type === "usda") {
+    const upfrontFee = baseLoan * 0.01;
+
+    return {
+      upfrontFee,
+      upfrontFeeRate: 1,
+      monthlyInsurance: ((baseLoan + upfrontFee) * 0.35) / 100 / 12,
+      insuranceLabel: "USDA annual fee (0.35%/yr)",
+    };
+  }
+
+  return {
+    upfrontFee: 0,
+    upfrontFeeRate: 0,
+    monthlyInsurance: manualPmi,
+    insuranceLabel: "PMI",
+  };
+}
+
+// Minimum down payment (%) each program typically allows.
+const minDownPercent: Record<LoanType, number> = {
+  conventional: 3,
+  fha: 3.5,
+  va: 0,
+  usda: 0,
+};
 
 type TaxItem = {
   name: string;
@@ -61,14 +188,33 @@ export default function MortgageCalculator() {
   const [extraPayment, setExtraPayment] = useState(0);
   const [showSchedule, setShowSchedule] = useState(false);
 
+  const [loanTypeChoice, setLoanTypeChoice] =
+    useState<LoanType>("conventional");
+  const [vaUsedBefore, setVaUsedBefore] = useState(false);
+  const [vaExempt, setVaExempt] = useState(false);
+
+  // Basic mode keeps the original conventional-with-manual-PMI behavior.
+  const loanType: LoanType =
+    mode === "advanced" ? loanTypeChoice : "conventional";
+
   const downPayment =
     downMode === "percent"
       ? (price * Math.min(downValue, 100)) / 100
       : Math.min(downValue, price);
 
-  const loanAmount = Math.max(0, price - downPayment);
+  const downPercent = price > 0 ? (downPayment / price) * 100 : 0;
+  const baseLoan = Math.max(0, price - downPayment);
   const months = Math.max(1, Math.round(years * 12));
+
+  const costsFor = (type: LoanType) =>
+    loanCosts(type, baseLoan, price, years, monthlyPmi, vaUsedBefore, vaExempt);
+
+  const costs = costsFor(loanType);
+
+  // Upfront program fees are assumed to be financed into the loan.
+  const loanAmount = baseLoan + costs.upfrontFee;
   const basePayment = payment(loanAmount, rate, months);
+  const monthlyMortgageInsurance = costs.monthlyInsurance;
 
   // Texas rates are commonly expressed as dollars per $100
   // of taxable property value.
@@ -83,7 +229,33 @@ export default function MortgageCalculator() {
   const monthlyInsurance = annualInsurance / 12;
 
   const monthlyTotal =
-    basePayment + monthlyTax + monthlyInsurance + monthlyHoa + monthlyPmi;
+    basePayment +
+    monthlyTax +
+    monthlyInsurance +
+    monthlyHoa +
+    monthlyMortgageInsurance;
+
+  // Same inputs, priced under each program, for the comparison table.
+  const comparison = loanTypeOrder.map((type) => {
+    const typeCosts = costsFor(type);
+    const typePayment = payment(
+      baseLoan + typeCosts.upfrontFee,
+      rate,
+      months,
+    );
+
+    return {
+      type,
+      costs: typeCosts,
+      monthly:
+        typePayment +
+        monthlyTax +
+        monthlyInsurance +
+        monthlyHoa +
+        typeCosts.monthlyInsurance,
+      belowMinDown: downPercent + 1e-9 < minDownPercent[type],
+    };
+  });
 
   const schedule = useMemo(() => {
     const rows: {
@@ -245,7 +417,72 @@ export default function MortgageCalculator() {
               </div>
             ) : (
               <div className="space-y-5 border-t border-slate-200 pt-5">
-                <h3 className="text-lg font-semibold">
+                <h3 className="text-lg font-semibold">Loan Type</h3>
+
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium">
+                    Loan program
+                  </span>
+                  <select
+                    value={loanTypeChoice}
+                    onChange={(event) =>
+                      setLoanTypeChoice(event.target.value as LoanType)
+                    }
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                  >
+                    {loanTypeOrder.map((type) => (
+                      <option key={type} value={type}>
+                        {loanTypeLabels[type]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {loanType === "va" && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={vaUsedBefore}
+                        onChange={(event) =>
+                          setVaUsedBefore(event.target.checked)
+                        }
+                      />
+                      I&apos;ve used a VA loan before
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={vaExempt}
+                        onChange={(event) => setVaExempt(event.target.checked)}
+                      />
+                      Exempt from the VA funding fee (e.g. service-connected
+                      disability)
+                    </label>
+                  </div>
+                )}
+
+                {comparison.find((row) => row.type === loanType)
+                  ?.belowMinDown && (
+                  <p
+                    role="alert"
+                    className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
+                  >
+                    {loanTypeLabels[loanType]} loans usually need at least{" "}
+                    {minDownPercent[loanType]}% down. Your down payment is{" "}
+                    {downPercent.toFixed(1)}%.
+                  </p>
+                )}
+
+                {costs.upfrontFee > 0 && (
+                  <p className="text-sm text-slate-600">
+                    Includes a {costs.upfrontFeeRate}% upfront fee of{" "}
+                    <strong>{money(costs.upfrontFee)}</strong>, added to your
+                    loan amount.
+                  </p>
+                )}
+
+                <h3 className="border-t border-slate-200 pt-5 text-lg font-semibold">
                   Advanced Property Tax Estimate
                 </h3>
 
@@ -289,7 +526,8 @@ export default function MortgageCalculator() {
                   setAnnualInsurance,
                 )}
                 {input("Monthly HOA ($)", monthlyHoa, setMonthlyHoa)}
-                {input("Monthly PMI ($)", monthlyPmi, setMonthlyPmi)}
+                {loanType === "conventional" &&
+                  input("Monthly PMI ($)", monthlyPmi, setMonthlyPmi)}
                 {input(
                   "Extra principal payment / month ($)",
                   extraPayment,
@@ -313,20 +551,31 @@ export default function MortgageCalculator() {
             </p>
 
             <div className="mt-8 space-y-4">
-              {[
-                ["Loan amount", loanAmount],
-                ["Principal & interest", basePayment],
-                ["Property tax / month", monthlyTax],
-                ["Insurance / month", monthlyInsurance],
-                ["HOA / month", monthlyHoa],
-                ["PMI / month", monthlyPmi],
-              ].map(([label, amount]) => (
+              {(
+                [
+                  ...(mode === "advanced"
+                    ? [["Loan type", loanTypeLabels[loanType]]]
+                    : []),
+                  ["Loan amount", money(loanAmount)],
+                  ...(costs.upfrontFee > 0
+                    ? [["Upfront fee (financed)", money(costs.upfrontFee)]]
+                    : []),
+                  ["Principal & interest", money(basePayment)],
+                  ["Property tax / month", money(monthlyTax)],
+                  ["Insurance / month", money(monthlyInsurance)],
+                  ["HOA / month", money(monthlyHoa)],
+                  [
+                    `${costs.insuranceLabel} / month`,
+                    money(monthlyMortgageInsurance),
+                  ],
+                ] as [string, string][]
+              ).map(([label, amount]) => (
                 <div
                   key={String(label)}
                   className="flex justify-between gap-4 border-b border-slate-100 pb-3"
                 >
                   <span className="text-slate-600">{label}</span>
-                  <span className="font-semibold">{money(Number(amount))}</span>
+                  <span className="font-semibold">{amount}</span>
                 </div>
               ))}
             </div>
@@ -397,11 +646,103 @@ export default function MortgageCalculator() {
               Estimates only. Actual payments depend on your lender, property
               tax assessment, exemptions, insurance, escrow, and other costs.
               Tax districts and rates are not automatically verified. PMI is a
-              manual estimate. Property tax and insurance are held constant in
-              these estimates.
+              manual estimate. FHA, VA, and USDA fees use typical program rates.
+              Property tax and insurance are held constant in these estimates.
             </p>
           </section>
         </div>
+
+        {mode === "advanced" && (
+          <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-bold">
+              Conventional vs FHA vs VA vs USDA
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              How the main loan types differ, and what each would cost with the
+              numbers you entered above.
+            </p>
+
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="w-36 p-3" />
+                    {comparison.map((row) => (
+                      <th
+                        key={row.type}
+                        className={`p-3 text-base ${
+                          row.type === loanType
+                            ? "bg-blue-50 text-blue-800"
+                            : ""
+                        }`}
+                      >
+                        {loanTypeLabels[row.type]}
+                        {row.type === loanType && (
+                          <span className="ml-2 text-xs font-medium">
+                            (selected)
+                          </span>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="align-top">
+                  <tr className="border-b border-slate-100">
+                    <th className="p-3 font-semibold text-slate-700">
+                      Your est. monthly payment
+                    </th>
+                    {comparison.map((row) => (
+                      <td
+                        key={row.type}
+                        className={`p-3 ${row.type === loanType ? "bg-blue-50" : ""}`}
+                      >
+                        <span className="text-lg font-bold text-blue-700">
+                          {money(row.monthly)}
+                        </span>
+                        {row.belowMinDown && (
+                          <span className="mt-1 block text-xs text-amber-700">
+                            Needs at least {minDownPercent[row.type]}% down
+                          </span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  {(
+                    [
+                      ["Minimum down payment", "minDown"],
+                      ["Mortgage insurance", "insurance"],
+                      ["Upfront fee", "upfrontFee"],
+                      ["Best for", "bestFor"],
+                    ] as const
+                  ).map(([label, key]) => (
+                    <tr key={key} className="border-b border-slate-100">
+                      <th className="p-3 font-semibold text-slate-700">
+                        {label}
+                      </th>
+                      {comparison.map((row) => (
+                        <td
+                          key={row.type}
+                          className={`p-3 text-slate-600 ${
+                            row.type === loanType ? "bg-blue-50" : ""
+                          }`}
+                        >
+                          {loanTypeDetails[row.type][key]}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-4 text-xs leading-5 text-slate-500">
+              Conventional PMI uses the monthly amount you entered. FHA, VA,
+              and USDA fees use typical program rates and assume upfront fees
+              are financed. Eligibility, limits, and fees vary; confirm with a
+              lender.
+            </p>
+          </section>
+        )}
       </div>
     </main>
   );
