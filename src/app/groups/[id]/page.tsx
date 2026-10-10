@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { PencilIcon, TrashIcon } from "@/components/icons";
 import {
   GROUP_LINK_LIFETIME_DAYS,
   getGroupLinkDaysLeft,
@@ -1251,86 +1252,73 @@ function SharedGroupContent() {
                       );
 
                       return (
-                        <li key={expense.id} className="p-4">
-                          {/* Expense description, payer, and total */}
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <p className="font-semibold">
+                        <li key={expense.id} className="flex items-start gap-3 px-4 py-3">
+                          <div className="min-w-0 flex-1">
+                            {/* Expense description and total */}
+                            <div className="flex items-baseline justify-between gap-3">
+                              <p className="truncate font-semibold">
                                 {expense.description}
                               </p>
-
-                              <p className="mt-1 text-sm text-slate-500">
-                                Paid by {payer?.name ?? "Unknown member"}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-col items-end gap-2">
                               <p className="whitespace-nowrap font-bold">
                                 {formatMoney(expense.amount_cents)}
                               </p>
-
-                              <button
-                                type="button"
-                                onClick={() => startEditingExpense(expense.id)}
-                                disabled={
-                                  deletingExpenseId !== null || savingEdit
-                                }
-                                className="rounded-lg border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                              >
-                                Edit
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => deleteExpense(expense.id)}
-                                disabled={
-                                  deletingExpenseId !== null ||
-                                  editingExpenseId !== null ||
-                                  savingEdit
-                                }
-                                className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {deletingExpenseId === expense.id
-                                  ? "Deleting..."
-                                  : "Delete"}
-                              </button>
                             </div>
-                          </div>
 
-                          {/* Saved split details */}
-                          <div className="mt-4 border-t border-slate-200 pt-3">
-                            <p className="mb-2 text-sm font-semibold text-slate-700">
-                              Split details
+                            <p className="mt-0.5 text-sm text-slate-500">
+                              Paid by {payer?.name ?? "Unknown member"}
                             </p>
 
-                            {!expense.shares || expense.shares.length === 0 ? (
-                              <p className="text-sm text-slate-500">
-                                No split details available.
-                              </p>
-                            ) : (
-                              <div className="space-y-2">
+                            {/* Saved split details */}
+                            {expense.shares && expense.shares.length > 0 && (
+                              <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
                                 {expense.shares.map((share) => {
                                   const member = members.find(
                                     (item) => item.id === share.memberId,
                                   );
 
                                   return (
-                                    <div
-                                      key={share.memberId}
-                                      className="flex items-center justify-between gap-3 text-sm"
-                                    >
-                                      <span className="text-slate-600">
-                                        {member?.name ?? "Unknown member"}
-                                      </span>
-
-                                      <span className="font-semibold text-slate-900">
+                                    <span key={share.memberId}>
+                                      {member?.name ?? "Unknown member"}{" "}
+                                      <span className="font-semibold text-slate-700">
                                         {formatMoney(share.shareCents)}
                                       </span>
-                                    </div>
+                                    </span>
                                   );
                                 })}
-                              </div>
+                              </p>
                             )}
+                          </div>
+
+                          <div className="flex shrink-0 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => startEditingExpense(expense.id)}
+                              disabled={deletingExpenseId !== null || savingEdit}
+                              aria-label={`Edit ${expense.description}`}
+                              title="Edit"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => deleteExpense(expense.id)}
+                              disabled={
+                                deletingExpenseId !== null ||
+                                editingExpenseId !== null ||
+                                savingEdit
+                              }
+                              aria-label={`Delete ${expense.description}`}
+                              title="Delete"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {deletingExpenseId === expense.id ? (
+                                <span className="text-xs">…</span>
+                              ) : (
+                                <TrashIcon className="h-4 w-4" />
+                              )}
+                            </button>
                           </div>
                         </li>
                       );
